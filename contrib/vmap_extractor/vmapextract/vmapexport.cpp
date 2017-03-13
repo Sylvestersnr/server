@@ -161,7 +161,7 @@ void ZeppFixVect(float* v)
 
 void FixZepp(WMOGroup& g)
 {
-    for (int i = 0; i < g.nVertices; ++i)
+    for (uint32 i = 0; i < g.nVertices; ++i)
         ZeppFixVect(g.MOVT + 3 * i);
 }
 
@@ -344,7 +344,7 @@ bool fillArchiveNameVector(std::vector<std::string>& pArchiveNames)
     sprintf(path, "%sterrain.mpq", input_path);
     pArchiveNames.push_back(path);
     sprintf(path, "%smodel.mpq", input_path);
-    pArchiveNames.push_back(path);
+    //pArchiveNames.push_back(path);
     pArchiveNames.push_back(path);
 	sprintf(path, "%stexture.mpq", input_path);
     pArchiveNames.push_back(path);
@@ -436,11 +436,11 @@ int main(int argc, char** argv)
     if (!processArgv(argc, argv))
         return 1;
 
-    if (!ModelLOSMgr::Load())
+    /*if (!ModelLOSMgr::Load())
     {
         printf("Unable to open LOS Modificators.\n");
         return 1;
-    }
+    }*/
     printf("Extract for %s. Beginning work ....\n", szRawVMAPMagic);
     //xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
     // Create the working directory
@@ -494,7 +494,7 @@ int main(int argc, char** argv)
 
 
         delete dbc;
-        //ParsMapFiles();
+        ParsMapFiles();
         delete [] map_ids;
         //nError = ERROR_SUCCESS;
         // Extract models, listed in DameObjectDisplayInfo.dbc
@@ -528,7 +528,7 @@ bool ModelLOSMgr::Load()
         fscanf(f, "%u %u %s\n", &enable, &mod.id, fName);
         if (!fName[0])
             break;
-        mod.enable = enable;
+        mod.enable = !!enable;
         mod.filename = fName;
         modificators.push_back(mod);
     }

@@ -342,6 +342,7 @@ include_directories(
   ${CMAKE_SOURCE_DIR}/src/game/vmap
   ${CMAKE_SOURCE_DIR}/src/game/Warden
   ${CMAKE_SOURCE_DIR}/dep/include
+  ${CMAKE_SOURCE_DIR}/dep/recastnavigation
   ${CMAKE_SOURCE_DIR}/dep/include/g3dlite
   ${CMAKE_BINARY_DIR}
   ${CMAKE_BINARY_DIR}/src/shared
@@ -358,6 +359,7 @@ endif()
 add_library(${LIBRARY_NAME} STATIC
   ${SCRIPTS_SRCS}
 )
+SET_TARGET_PROPERTIES (${LIBRARY_NAME} PROPERTIES FOLDER "Game Libs")
 
 target_link_libraries(scripts
   game

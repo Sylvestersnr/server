@@ -17,16 +17,18 @@
 cmake_minimum_required (VERSION 2.6)
 project (MANGOS_MAP_EXTRACTOR)
 
-add_subdirectory (libmpq)
-add_subdirectory (loadlib)
+include_directories (${CMAKE_SOURCE_DIR}/dep/libmpq)
+include_directories (loadlib)
 
-include_directories (${MANGOS_MAP_EXTRACTOR_SOURCE_DIR}/libmpq)
-include_directories (${MANGOS_MAP_EXTRACTOR_SOURCE_DIR}/loadlib)
+add_executable (mapextractor
+    dbcfile.cpp
+    mpq_libmpq.cpp
+    System.cpp
+    loadlib/loadlib.cpp 
+    loadlib/adt.cpp
+    loadlib/wdt.cpp
+	)
 
-link_directories (${MANGOS_MAP_EXTRACTOR_SOURCE_DIR}/libmpq)
-link_directories (${MANGOS_MAP_EXTRACTOR_SOURCE_DIR}/loadlib)
+SET_TARGET_PROPERTIES (mapextractor PROPERTIES FOLDER Extractors)
 
-add_executable (ad dbcfile.cpp mpq_libmpq.cpp System.cpp)
-
-target_link_libraries (ad libmpq)
-target_link_libraries (ad loadlib)
+target_link_libraries (mapextractor zlib libmpq bz2)

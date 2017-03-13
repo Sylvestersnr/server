@@ -20,7 +20,7 @@
 
 /* generic includes. */
 #include <ctype.h>
-#include <dirent.h>
+//#include <dirent.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>

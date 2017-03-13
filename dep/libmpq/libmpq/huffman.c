@@ -229,7 +229,7 @@ void libmpq__huffman_insert_item(struct huffman_tree_item_s **p_item, struct huf
 	struct huffman_tree_item_s *prev2;
 
 	/* pointer to next item. */
-	long next2;
+	void* next2;
 
 	/* check the first item already has next one. */
 	if (next != 0) {
@@ -284,7 +284,7 @@ void libmpq__huffman_insert_item(struct huffman_tree_item_s **p_item, struct huf
 			item->prev = item2->prev;
 
 			/* usually NULL. */
-			next2      = PTR_INT(p_item[0]);
+			next2      = (void*)PTR_INT(p_item[0]);
 
 			/* previous item to the second (or last tree item). */
 			prev2      = item2->prev;
@@ -307,11 +307,11 @@ void libmpq__huffman_insert_item(struct huffman_tree_item_s **p_item, struct huf
 			if (next2 < 0) {
 
 				/* set next item. */
-				next2 = item2 - item2->next->prev;
+				next2 =  (void*)(item2 - item2->next->prev);
 			}
 
 			/* add next item to previous one. */
-			prev2       += next2;
+			prev2       += (unsigned long long)next2;
 			prev2->next  = item;
 
 			/* set the next and last item. */

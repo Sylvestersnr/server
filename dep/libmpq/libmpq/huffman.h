@@ -31,9 +31,9 @@
 #define LIBMPQ_HUFF_DECOMPRESS			0		/* we want to decompress using huffman trees. */
 
 /* define pointer conversions. */
-#define PTR_NOT(ptr)				(struct huffman_tree_item_s *)(~(unsigned long)(ptr))
+#define PTR_NOT(ptr)				(struct huffman_tree_item_s *)(~(unsigned long long)(ptr))
 #define PTR_PTR(ptr)				((struct huffman_tree_item_s *)(ptr))
-#define PTR_INT(ptr)				(long)(ptr)
+#define PTR_INT(ptr)				(long long)(ptr)
 
 /* define item handling. */
 #define INSERT_ITEM				1		/* insert item into huffman tree. */
