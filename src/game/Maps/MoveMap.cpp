@@ -317,6 +317,7 @@ dtNavMeshQuery const* MMapManager::GetNavMeshQuery(uint32 mapId)
     if (loadedMMaps.find(mapId) == loadedMMaps.end())
         return NULL;
 
+    //deprecated
     uint32 tid = ACE_Based::Thread::currentId();
     MMapData* mmap = loadedMMaps[mapId];
     mmap->navMeshQueries_lock.acquire_read();
@@ -331,7 +332,7 @@ dtNavMeshQuery const* MMapManager::GetNavMeshQuery(uint32 mapId)
         // allocate mesh query
         navMeshQuery = dtAllocNavMeshQuery();
         MANGOS_ASSERT(navMeshQuery);
-        if (DT_SUCCESS != navMeshQuery->init(mmap->navMesh, 2048, tid))
+        if (DT_SUCCESS != navMeshQuery->init(mmap->navMesh, 2048))
         {
             mmap->navMeshQueries_lock.release();
             dtFreeNavMeshQuery(navMeshQuery);
@@ -421,6 +422,7 @@ dtNavMeshQuery const* MMapManager::GetModelNavMeshQuery(uint32 displayId)
     if (loadedModels.find(displayId) == loadedModels.end())
         return NULL;
 
+    //deprecated
     uint32 tid = ACE_Based::Thread::currentId();
     MMapData* mmap = loadedModels[displayId];
     if (mmap->navMeshQueries.find(tid) == mmap->navMeshQueries.end())
@@ -431,7 +433,7 @@ dtNavMeshQuery const* MMapManager::GetModelNavMeshQuery(uint32 displayId)
             // allocate mesh query
             dtNavMeshQuery* query = dtAllocNavMeshQuery();
             MANGOS_ASSERT(query);
-            if (dtStatusFailed(query->init(mmap->navMesh, 2048, tid)))
+            if (dtStatusFailed(query->init(mmap->navMesh, 2048)))
             {
                 dtFreeNavMeshQuery(query);
                 sLog.outError("MMAP:GetNavMeshQuery: Failed to initialize dtNavMeshQuery for displayid %03u tid %u", displayId, tid);
