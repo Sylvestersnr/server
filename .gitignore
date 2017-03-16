@@ -17,9 +17,17 @@
 *.so.dbg
 *.bin
 *.gz
+
+# Visual studio solution files
 *.tlog
 *.vcxproj
 *.vcxproj.filters
+*.sln
+*.db
+*.opendb
+*.exp
+*.res
+
 
 #
 # Top-level generic files
