@@ -633,10 +633,11 @@ void Group::MasterLoot(Creature *creature, Loot* loot)
             i->is_underthreshold = 1;
     }
 
-    uint32 playerCount = 0;
 
     WorldPacket data(SMSG_LOOT_MASTER_LIST, 330);
     data << uint8(0);
+
+    uint32 playerCount = 0;
 
     for (GroupReference *itr = GetFirstMember(); itr != NULL; itr = itr->next())
     {

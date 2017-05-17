@@ -35,14 +35,11 @@
 
 template class MangosSocket<WorldSession, WorldSocket, AuthCrypt>;
 
-int WorldSocket::ProcessIncoming(WorldPacket* new_pct)
+int WorldSocket::ProcessIncoming(std::unique_ptr<WorldPacket> packet)
 {
-    MANGOS_ASSERT(new_pct);
+    MANGOS_ASSERT(packet);
 
-    // manage memory ;)
-    ACE_Auto_Ptr<WorldPacket> aptr(new_pct);
-
-    const ACE_UINT16 opcode = new_pct->GetOpcode();
+    const ACE_UINT16 opcode = packet->GetOpcode();
 
     if (opcode >= NUM_MSG_TYPES)
     {
@@ -53,11 +50,11 @@ int WorldSocket::ProcessIncoming(WorldPacket* new_pct)
     if (closing_)
         return -1;
 
-    new_pct->FillPacketTime(WorldTimer::getMSTime());
+    packet->FillPacketTime(WorldTimer::getMSTime());
 
     // Dump received packet.
-    sLog.outWorldPacketDump(get_handle(), new_pct->GetOpcode(),
-                            LookupOpcodeName(new_pct->GetOpcode()), new_pct,
+    sLog.outWorldPacketDump(get_handle(), packet->GetOpcode(),
+                            LookupOpcodeName(packet->GetOpcode()), packet.get(),
                             true);
 
     try
@@ -65,7 +62,7 @@ int WorldSocket::ProcessIncoming(WorldPacket* new_pct)
         switch (opcode)
         {
             case CMSG_PING:
-                return HandlePing(*new_pct);
+                return HandlePing(*packet);
             case CMSG_AUTH_SESSION:
                 if (m_Session)
                 {
@@ -73,18 +70,16 @@ int WorldSocket::ProcessIncoming(WorldPacket* new_pct)
                     return -1;
                 }
 
-                return HandleAuthSession(*new_pct);
+                return HandleAuthSession(*packet);
             default:
             {
                 ACE_GUARD_RETURN(LockType, Guard, m_SessionLock, -1);
 
                 if (m_Session != NULL)
                 {
-                    // OK ,give the packet to WorldSession
-                    aptr.release();
                     // WARNINIG here we call it with locks held.
                     // Its possible to cause deadlock if QueuePacket calls back
-                    m_Session->QueuePacket(new_pct);
+                    m_Session->QueuePacket(std::move(packet));
                     return 0;
                 }
                 else
@@ -102,7 +97,7 @@ int WorldSocket::ProcessIncoming(WorldPacket* new_pct)
         if (sLog.HasLogLevelOrHigher(LOG_LVL_DEBUG))
         {
             DEBUG_LOG("Dumping error-causing packet:");
-            new_pct->hexlike();
+            packet->hexlike();
         }
 
         if (sWorld.getConfig(CONFIG_BOOL_KICK_PLAYER_ON_BAD_PACKET))

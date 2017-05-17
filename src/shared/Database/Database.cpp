@@ -574,7 +574,7 @@ bool Database::CheckRequiredMigrations(const char **migrations)
     return true;
 }
 
-bool Database::ExecuteStmt(const SqlStatementID& id, SqlStmtParameters * params)
+bool Database::ExecuteStmt(const SqlStatementID& id, std::unique_ptr<SqlStmtParameters> params)
 {
     if (!m_pAsyncConn)
         return false;
@@ -583,25 +583,24 @@ bool Database::ExecuteStmt(const SqlStatementID& id, SqlStmtParameters * params)
     if(pTrans)
     {
         //add SQL request to trans queue
-        pTrans->DelayExecute(new SqlPreparedRequest(id.ID(), params));
+        pTrans->DelayExecute(new SqlPreparedRequest(id.ID(), std::move(params)));
     }
     else
     {
         //if async execution is not available
         if(!m_bAllowAsyncTransactions)
-            return DirectExecuteStmt(id, params);
+            return DirectExecuteStmt(id, std::move(params));
 
         // Simple sql statement
-        AddToDelayQueue(new SqlPreparedRequest(id.ID(), params));
+        AddToDelayQueue(new SqlPreparedRequest(id.ID(), std::move(params)));
     }
 
     return true;
 }
 
-bool Database::DirectExecuteStmt( const SqlStatementID& id, SqlStmtParameters * params )
+bool Database::DirectExecuteStmt(const SqlStatementID& id, std::unique_ptr<SqlStmtParameters> params)
 {
     MANGOS_ASSERT(params);
-    std::auto_ptr<SqlStmtParameters> p(params);
     //execute statement
     SqlConnection::Lock _guard(getAsyncConnection());
     return _guard->ExecuteStmt(id.ID(), *params);
@@ -668,7 +667,7 @@ SqlTransaction * Database::TransHelper::init()
 SqlTransaction * Database::TransHelper::detach()
 {
     SqlTransaction * pRes = m_pTrans;
-    m_pTrans = NULL;
+    m_pTrans = nullptr;
     return pRes;
 }
 
@@ -677,6 +676,6 @@ void Database::TransHelper::reset()
     if(m_pTrans)
     {
         delete m_pTrans;
-        m_pTrans = NULL;
+        m_pTrans = nullptr;
     }
 }

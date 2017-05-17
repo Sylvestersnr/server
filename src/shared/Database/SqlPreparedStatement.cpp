@@ -41,14 +41,10 @@ SqlStatement& SqlStatement::operator=( const SqlStatement& index )
         m_index = index.m_index;
         m_pDB = index.m_pDB;
 
-        if(m_pParams)
-        {
-            delete m_pParams;
-            m_pParams = NULL;
-        }
-
+        m_pParams.reset();
+        
         if(index.m_pParams)
-            m_pParams = new SqlStmtParameters(*(index.m_pParams));
+            m_pParams = std::make_unique<SqlStmtParameters>(*(index.m_pParams));
     }
 
     return *this;
@@ -56,7 +52,7 @@ SqlStatement& SqlStatement::operator=( const SqlStatement& index )
 
 bool SqlStatement::Execute()
 {
-    SqlStmtParameters * args = detach();
+    std::unique_ptr<SqlStmtParameters> args = detach();
     //verify amount of bound parameters
     if(args->boundParams() != arguments())
     {
@@ -66,12 +62,12 @@ bool SqlStatement::Execute()
         return false;
     }
 
-    return m_pDB->ExecuteStmt(m_index, args);
+    return m_pDB->ExecuteStmt(m_index, std::move(args));
 }
 
 bool SqlStatement::DirectExecute()
 {
-    SqlStmtParameters * args = detach();
+    std::unique_ptr<SqlStmtParameters> args = detach();
     //verify amount of bound parameters
     if(args->boundParams() != arguments())
     {
@@ -81,7 +77,7 @@ bool SqlStatement::DirectExecute()
         return false;
     }
 
-    return m_pDB->DirectExecuteStmt(m_index, args);
+    return m_pDB->DirectExecuteStmt(m_index, std::move(args));
 }
 
 //////////////////////////////////////////////////////////////////////////

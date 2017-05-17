@@ -55,7 +55,7 @@ void NodeSession::SendPacketToGameClient(uint32 accountId, WorldPacket const* pa
     SendPacket(&data);
 }
 
-void NodeSession::ForwardClientPacket(uint32 accountId, WorldPacket const* packet)
+void NodeSession::ForwardClientPacket(uint32 accountId, std::unique_ptr<const WorldPacket> packet)
 {
     WorldPacket data(MSG_FORWARD_CLIENT_PACKET, 0);
     WritePacketForward(data, *packet, accountId);
@@ -78,13 +78,12 @@ void NodeSession::HandleSendPacketToSession(WorldPacket& pkt)
 void NodeSession::HandleForwardClientPacket(WorldPacket& pkt)
 {
     uint32 sessionId;
-    WorldPacket* newPkt = new WorldPacket();
+    auto newPkt = std::make_unique<WorldPacket>();
     ReadPacketForward(pkt, *newPkt, sessionId);
     WorldSession* sess = sWorld.FindSession(sessionId);
     if (!sess)
     {
-        delete newPkt;
         return;
     }
-    sess->QueuePacket(newPkt, this);
+    sess->QueuePacket(std::move(newPkt), this);
 }

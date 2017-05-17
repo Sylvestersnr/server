@@ -3,6 +3,7 @@
 
 #include "MangosSocket.h"
 #include "Auth/AuthCrypt.h"
+#include <memory>
 
 class NodeSession;
 template <typename T>
@@ -19,7 +20,7 @@ class MapSocket: public MangosSocket<NodeSession, MapSocket, NoCrypt>
         int SendStartupPacket();
     protected:
         int OnSocketOpen();
-        int ProcessIncoming (WorldPacket* new_pct);
+        int ProcessIncoming (std::unique_ptr<WorldPacket> new_pct);
         int iSendPacket (const WorldPacket& pct);
 };
 

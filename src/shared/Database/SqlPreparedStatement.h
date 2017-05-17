@@ -191,12 +191,10 @@ class SqlStatementID
 class MANGOS_DLL_SPEC SqlStatement
 {
     public:
-        ~SqlStatement() { delete m_pParams; }
-
-        SqlStatement(const SqlStatement& index) : m_index(index.m_index), m_pDB(index.m_pDB), m_pParams(NULL)
+        SqlStatement(const SqlStatement& index) : m_index(index.m_index), m_pDB(index.m_pDB)
         {
             if(index.m_pParams)
-                m_pParams = new SqlStmtParameters(*(index.m_pParams));
+                m_pParams = std::make_unique<SqlStmtParameters>(*(index.m_pParams));
         }
 
         SqlStatement& operator=(const SqlStatement& index);
@@ -272,23 +270,26 @@ class MANGOS_DLL_SPEC SqlStatement
     protected:
         //don't allow anyone except Database class to create static SqlStatement objects
         friend class Database;
-        SqlStatement(const SqlStatementID& index, Database& db) : m_index(index), m_pDB(&db), m_pParams(NULL) {}
+        SqlStatement(const SqlStatementID& index, Database& db) : m_index(index), m_pDB(&db) {}
 
     private:
 
         SqlStmtParameters * get()
         {
             if(!m_pParams)
-                m_pParams = new SqlStmtParameters(arguments());
+                m_pParams = std::make_unique<SqlStmtParameters>(arguments());
 
-            return m_pParams;
+            return m_pParams.get();
         }
 
-        SqlStmtParameters * detach()
+        std::unique_ptr<SqlStmtParameters> detach()
         {
-            SqlStmtParameters * p = m_pParams ? m_pParams : new SqlStmtParameters(0);
-            m_pParams = NULL;
-            return p;
+            if (m_pParams)
+            {
+                return std::move(m_pParams);
+            }
+
+            return std::make_unique<SqlStmtParameters>(0);
         }
 
         //helper function
@@ -302,7 +303,7 @@ class MANGOS_DLL_SPEC SqlStatement
 
         SqlStatementID m_index;
         Database * m_pDB;
-        SqlStmtParameters * m_pParams;
+        std::unique_ptr<SqlStmtParameters> m_pParams;
 };
 
 //base prepared statement class

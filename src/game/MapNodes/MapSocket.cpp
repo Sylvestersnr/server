@@ -10,14 +10,11 @@
 
 template class MangosSocket<NodeSession, MapSocket, NoCrypt>;
 
-int MapSocket::ProcessIncoming(WorldPacket* new_pct)
+int MapSocket::ProcessIncoming(std::unique_ptr<WorldPacket> packet)
 {
-    MANGOS_ASSERT(new_pct);
+    MANGOS_ASSERT(packet);
 
-    // manage memory ;)
-    ACE_Auto_Ptr<WorldPacket> aptr(new_pct);
-
-    const ACE_UINT16 opcode = new_pct->GetOpcode();
+    const ACE_UINT16 opcode = packet->GetOpcode();
 
     if (opcode >= MAX_NODES_OPCODES)
     {
@@ -28,17 +25,16 @@ int MapSocket::ProcessIncoming(WorldPacket* new_pct)
     if (closing_)
         return -1;
 
-    new_pct->FillPacketTime(WorldTimer::getMSTime());
+    packet->FillPacketTime(WorldTimer::getMSTime());
 
     switch (opcode)
     {
         case MMSG_HELLO:
         case NMSG_HELLO:
         {
-            aptr.release();
             if (!m_Session) // Register Master -> Node session here
                 m_Session = new NodeSession(this);
-            m_Session->QueuePacket(new_pct);
+            m_Session->QueuePacket(std::move(packet));
             break;
         }
         default:
@@ -47,11 +43,9 @@ int MapSocket::ProcessIncoming(WorldPacket* new_pct)
 
             if (m_Session != NULL)
             {
-                // OK, give the packet to WorldSession
-                aptr.release();
                 // WARNINIG here we call it with locks held.
                 // Its possible to cause deadlock if QueuePacket calls back
-                m_Session->QueuePacket(new_pct);
+                m_Session->QueuePacket(std::move(packet));
                 return 0;
             }
             else

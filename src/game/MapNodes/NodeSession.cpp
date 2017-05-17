@@ -34,25 +34,23 @@ void NodeSession::SendPacket(WorldPacket const* packet)
         m_socket->CloseSocket();
 }
 
-void NodeSession::QueuePacket(WorldPacket* newPacket)
+void NodeSession::QueuePacket(std::unique_ptr<WorldPacket> newPacket)
 {
     NodeOpcodeHandler const* handler = sNodesOpcodes->LookupOpcode(newPacket->GetOpcode());
     if (!handler || handler->packetProcessing > NODE_MAX_PROCESS_TYPE)
     {
         sLog.outError("[Cluster/Protocol] Invalid packet received: size: %u op: 0x%x [%s]",
             newPacket->size(), newPacket->GetOpcode(), handler ? handler->name : "<UNKNOWN>");
-        delete newPacket;
         return;
     }
     //sLog.outString("[Cluster::%s][%s] Rcv %s [size %u]", sNodesMgr->GetServerName().c_str(), GetName(), handler->name, newPacket->size());
     m_lastReceivedPacketTime = newPacket->GetPacketTime();
     if (handler->packetProcessing == NODE_PROCESS_REALTIME)
     {
-        ProcessPacket(newPacket);
-        delete newPacket;
+        ProcessPacket(std::move(newPacket));
     }
     else
-        m_recvQueue[handler->packetProcessing].add(newPacket);
+        m_recvQueue[handler->packetProcessing].add(std::move(newPacket));
 }
 
 bool NodeSession::SafeUpdate(uint32 diff)
@@ -134,12 +132,12 @@ void NodeSession::UnsafeUpdate(uint32 diff)
 
 void NodeSession::ProcessPacketsByType(uint32 type)
 {
-    WorldPacket* packet = NULL;
-    while (m_socket && !m_socket->IsClosed() && m_recvQueue[type].next(packet))
-        ProcessPacket(packet);
+    std::unique_ptr<WorldPacket> packet;
+    while (m_socket && !m_socket->IsClosed() && m_recvQueue[type].next(&packet, 1))
+        ProcessPacket(std::move(packet));
 }
 
-void NodeSession::ProcessPacket(WorldPacket* packet)
+void NodeSession::ProcessPacket(std::unique_ptr<WorldPacket> packet)
 {
     NodeOpcodeHandler const* handler = sNodesOpcodes->LookupOpcode(packet->GetOpcode());
     ASSERT(handler);

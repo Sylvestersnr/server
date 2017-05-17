@@ -7,7 +7,6 @@
 #include <ace/os_include/sys/os_socket.h>
 #include <ace/OS_NS_string.h>
 #include <ace/Reactor.h>
-#include <ace/Auto_Ptr.h>
 
 #include "MangosSocket.h"
 #include "Common.h"
@@ -30,7 +29,6 @@ MangosSocket<SessionType, SocketName, Crypt>::MangosSocket() :
     m_LastPingTime(ACE_Time_Value::zero),
     m_OverSpeedPings(0),
     m_Session(0),
-    m_RecvWPct(0),
     m_RecvPct(),
     m_Header(sizeof(ClientPktHeader)),
     m_OutBuffer(0),
@@ -45,8 +43,6 @@ MangosSocket<SessionType, SocketName, Crypt>::MangosSocket() :
 template <typename SessionType, typename SocketName, typename Crypt>
 MangosSocket<SessionType, SocketName, Crypt>::~MangosSocket(void)
 {
-    delete m_RecvWPct;
-
     if (m_OutBuffer)
         m_OutBuffer->release();
 
@@ -313,7 +309,7 @@ int MangosSocket<SessionType, SocketName, Crypt>::handle_input_header(void)
 
     header.size -= 4;
 
-    ACE_NEW_RETURN(m_RecvWPct, WorldPacket((uint16) header.cmd, header.size), -1);
+    m_RecvWPct = std::make_unique<WorldPacket>((uint16) header.cmd, header.size);
 
     if (header.size > 0)
     {
@@ -336,7 +332,7 @@ int MangosSocket<SessionType, SocketName, Crypt>::handle_input_payload(void)
     MANGOS_ASSERT(m_Header.space() == 0);
     MANGOS_ASSERT(m_RecvWPct != NULL);
 
-    const int ret = ((SocketName*)this)->ProcessIncoming(m_RecvWPct);
+    const int ret = ((SocketName*)this)->ProcessIncoming(std::move(m_RecvWPct));
 
     m_RecvPct.base(NULL, 0);
     m_RecvPct.reset();

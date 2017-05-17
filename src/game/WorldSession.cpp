@@ -110,11 +110,6 @@ WorldSession::~WorldSession()
         m_Socket = nullptr;
     }
 
-    ///- empty incoming packet queue
-    WorldPacket* packet = nullptr;
-    for (int i = 0; i < PACKET_PROCESS_MAX_TYPE; ++i)
-        while (_recvQueue[i].next(packet))
-            delete packet;
     SetDumpPacket(nullptr);
     SetReadPacket(nullptr);
     SetDumpRecvPackets(nullptr);
@@ -245,30 +240,29 @@ void WorldSession::SendPacket(WorldPacket const* packet)
 }
 
 /// Add an incoming packet to the queue
-void WorldSession::QueuePacket(WorldPacket* newPacket, NodeSession* from_node)
+void WorldSession::QueuePacket(std::unique_ptr<WorldPacket> packet, NodeSession* from_node)
 {
-    OpcodeHandler const& opHandle = opcodeTable[newPacket->GetOpcode()];
+    OpcodeHandler const& opHandle = opcodeTable[packet->GetOpcode()];
     if (opHandle.packetProcessing >= PACKET_PROCESS_MAX_TYPE)
     {
         sLog.outError("SESSION: opcode %s (0x%.4X) will be skipped",
-                      LookupOpcodeName(newPacket->GetOpcode()),
-                      newPacket->GetOpcode());
+                      LookupOpcodeName(packet->GetOpcode()),
+                      packet->GetOpcode());
         return;
     }
-    m_lastReceivedPacketTime = newPacket->GetPacketTime();
+    m_lastReceivedPacketTime = packet->GetPacketTime();
 
-    if (m_nodeSession && m_nodeSession != from_node && sNodesOpcodes->IsOpcodeForwardedToNode(newPacket->GetOpcode()))
+    if (m_nodeSession && m_nodeSession != from_node && sNodesOpcodes->IsOpcodeForwardedToNode(packet->GetOpcode()))
     {
-        m_nodeSession->ForwardClientPacket(GetAccountId(), newPacket);
-        delete newPacket;
+        m_nodeSession->ForwardClientPacket(GetAccountId(), std::move(packet));
         return;
     }
     uint32 processing = opHandle.packetProcessing;
     if (processing != PACKET_PROCESS_WORLD && processing != PACKET_PROCESS_DB_QUERY)
-        if (!IsNode() && GetMasterPlayer() && sNodesOpcodes->IsOpcodeHandledByMaster(newPacket->GetOpcode()))
+        if (!IsNode() && GetMasterPlayer() && sNodesOpcodes->IsOpcodeHandledByMaster(packet->GetOpcode()))
             processing = PACKET_PROCESS_MASTER_SAFE;
 
-    _recvQueue[processing].add(newPacket);
+    _recvQueue[processing].add(std::move(packet));
 }
 
 /// Logging helper for unexpected opcodes
@@ -451,9 +445,9 @@ bool WorldSession::CanProcessPackets() const
 
 void WorldSession::ProcessPackets(PacketFilter& updater)
 {
-    WorldPacket* packet = nullptr;
+    std::unique_ptr<WorldPacket> packet;
     _receivedPacketType[updater.PacketProcessType()] = false;
-    while (CanProcessPackets() && _recvQueue[updater.PacketProcessType()].next(packet, updater))
+    while (CanProcessPackets() && _recvQueue[updater.PacketProcessType()].next(&packet, updater, 1))
     {
         _receivedPacketType[updater.PacketProcessType()] = true;
         if (!AllowPacket(packet->GetOpcode()))
@@ -478,7 +472,6 @@ void WorldSession::ProcessPackets(PacketFilter& updater)
                     break;
                 default:
                     // Otherwise we simply ignore
-                    delete packet;
                     continue;
             }
         }
@@ -488,8 +481,7 @@ void WorldSession::ProcessPackets(PacketFilter& updater)
         {
             if (!IsNode() && GetMasterPlayer() && sNodesOpcodes->IsOpcodeHandledByMaster(packet->GetOpcode()))
             {
-                ExecuteOpcode(opHandle, packet);
-                delete packet;
+                ExecuteOpcode(opHandle, packet.get());
                 continue;
             }
             uint32 packetTime = WorldTimer::getMSTime();
@@ -501,33 +493,33 @@ void WorldSession::ProcessPackets(PacketFilter& updater)
                     {
                         // skip STATUS_LOGGEDIN opcode unexpected errors if player logout sometime ago - this can be network lag delayed packets
                         if (!m_playerRecentlyLogout)
-                            LogUnexpectedOpcode(packet, "the player has not logged in yet");
+                            LogUnexpectedOpcode(packet.get(), "the player has not logged in yet");
                     }
                     else if (_player->IsInWorld())
-                        ExecuteOpcode(opHandle, packet);
+                        ExecuteOpcode(opHandle, packet.get());
 
                     // lag can cause STATUS_LOGGEDIN opcodes to arrive after the player started a transfer
                     break;
                 case STATUS_LOGGEDIN_OR_RECENTLY_LOGGEDOUT:
                     if (!_player && !m_playerRecentlyLogout)
-                        LogUnexpectedOpcode(packet, "the player has not logged in yet and not recently logout");
+                        LogUnexpectedOpcode(packet.get(), "the player has not logged in yet and not recently logout");
                     else
                         // not expected _player or must checked in packet hanlder
-                        ExecuteOpcode(opHandle, packet);
+                        ExecuteOpcode(opHandle, packet.get());
                     break;
                 case STATUS_TRANSFER:
                     if (!_player)
-                        LogUnexpectedOpcode(packet, "the player has not logged in yet");
+                        LogUnexpectedOpcode(packet.get(), "the player has not logged in yet");
                     else if (_player->IsInWorld())
-                        LogUnexpectedOpcode(packet, "the player is still in world");
+                        LogUnexpectedOpcode(packet.get(), "the player is still in world");
                     else
-                        ExecuteOpcode(opHandle, packet);
+                        ExecuteOpcode(opHandle, packet.get());
                     break;
                 case STATUS_AUTHED:
                     // prevent cheating with skip queue wait
                     if (m_inQueue)
                     {
-                        LogUnexpectedOpcode(packet, "the player not pass queue yet");
+                        LogUnexpectedOpcode(packet.get(), "the player not pass queue yet");
                         break;
                     }
 
@@ -535,7 +527,7 @@ void WorldSession::ProcessPackets(PacketFilter& updater)
                     // and before other STATUS_LOGGEDIN_OR_RECENTLY_LOGGOUT opcodes.
                     m_playerRecentlyLogout = false;
 
-                    ExecuteOpcode(opHandle, packet);
+                    ExecuteOpcode(opHandle, packet.get());
                     break;
                 case STATUS_NEVER:
                     sLog.outError("SESSION: received not allowed opcode %s (0x%.4X)",
@@ -560,12 +552,12 @@ void WorldSession::ProcessPackets(PacketFilter& updater)
         catch (ForwardToMaster_Exception& )
         {
             ASSERT(GetMasterSession());
-            GetMasterSession()->ForwardClientPacket(GetAccountId(), packet);
+            GetMasterSession()->ForwardClientPacket(GetAccountId(), std::move(packet));
         }
         catch (ForwardToNode_Exception& )
         {
             ASSERT(GetNodeSession());
-            GetMasterSession()->ForwardClientPacket(GetAccountId(), packet);
+            GetMasterSession()->ForwardClientPacket(GetAccountId(), std::move(packet));
         }
         catch (ByteBufferException &)
         {
@@ -595,8 +587,6 @@ void WorldSession::ProcessPackets(PacketFilter& updater)
             sLog.outInfo("CATCH Unknown exception. Account %u / IP %s", GetAccountId(), GetRemoteAddress().c_str());
             ProcessAnticheatAction("Anticrash", "Exception raised", CHEAT_ACTION_KICK);
         }
-
-        delete packet;
     }
 }
 
@@ -604,9 +594,7 @@ void WorldSession::ProcessPackets(PacketFilter& updater)
 void WorldSession::ClearIncomingPacketsByType(PacketProcessing type)
 {
     ASSERT(type < PACKET_PROCESS_MAX_TYPE);
-    WorldPacket* data = nullptr;
-    while (_recvQueue[type].next(data))
-        delete data;
+    _recvQueue[type].clear();
 }
 
 void WorldSession::SetDisconnectedSession()

@@ -201,7 +201,7 @@ class MangosSocket : protected WorldHandler
         SessionType* m_Session;
 
         /// here are stored the fragments of the received data
-        WorldPacket* m_RecvWPct;
+        std::unique_ptr<WorldPacket> m_RecvWPct;
 
         /// This block actually refers to m_RecvWPct contents,
         /// which allows easy and safe writing to it.

@@ -33,7 +33,7 @@ class SqlConnection;
 
 class SqlDelayThread : public ACE_Based::Runnable
 {
-    typedef ACE_Based::LockedQueue<SqlOperation*, ACE_Thread_Mutex> SqlQueue;
+    typedef LockedQueue<SqlOperation*> SqlQueue;
 
     private:
         SqlQueue m_sqlQueue;                                ///< Queue of SQL statements

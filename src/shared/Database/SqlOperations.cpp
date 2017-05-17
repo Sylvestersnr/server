@@ -69,13 +69,8 @@ bool SqlTransaction::Execute(SqlConnection *conn)
     return conn->CommitTransaction();
 }
 
-SqlPreparedRequest::SqlPreparedRequest(int nIndex, SqlStmtParameters * arg ) : m_nIndex(nIndex), m_param(arg)
+SqlPreparedRequest::SqlPreparedRequest(int nIndex, std::unique_ptr<SqlStmtParameters> arg) : m_nIndex(nIndex), m_param(std::move(arg))
 {
-}
-
-SqlPreparedRequest::~SqlPreparedRequest()
-{
-    delete m_param;
 }
 
 bool SqlPreparedRequest::Execute( SqlConnection *conn )
@@ -103,7 +98,7 @@ bool SqlQuery::Execute(SqlConnection *conn)
 class SqlResultCallbackCaller : public ACE_Based::Runnable
 {
     public:
-        typedef ACE_Based::LockedQueue<MaNGOS::IQueryCallback*, ACE_Thread_Mutex> CallbackQueue;
+        typedef LockedQueue<MaNGOS::IQueryCallback*> CallbackQueue;
         CallbackQueue queue;
         virtual void run()
         {

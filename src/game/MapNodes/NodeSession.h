@@ -8,6 +8,7 @@
 #include "MapSocket.h"
 #include "NodesOpcodes.h"
 #include "ObjectGuid.h"
+#include <memory>
 
 class MapSocket;
 class WorldSocket;
@@ -38,7 +39,7 @@ public:
     void SendPacket(NodesOpcodesList opcode);
     void SendPacket(NodesOpcodesList opcode, uint32 data1);
     void SendPacket(WorldPacket const* packet);
-    void QueuePacket(WorldPacket* packet);
+    void QueuePacket(std::unique_ptr<WorldPacket> packet);
 
     void SetName(std::string const& s) { m_name = s; }
     const char* GetName() const { return m_name.c_str(); }
@@ -87,7 +88,7 @@ public:
      * @param accountId
      * @param packet
      */
-    void ForwardClientPacket(uint32 accountId, WorldPacket const* packet);
+    void ForwardClientPacket(uint32 accountId, std::unique_ptr<const WorldPacket> packet);
 
     /**
      * @brief When the client is disconnected from the Master, call this function
@@ -116,10 +117,10 @@ protected:
     void WritePacketForward(WorldPacket& sendPacket, WorldPacket const& forwardedPacket, uint32 const& session);
 
     void ProcessPacketsByType(uint32 type);
-    void ProcessPacket(WorldPacket* packet);
+    void ProcessPacket(std::unique_ptr<WorldPacket> packet);
 
     MapSocket*      m_socket;
-    ACE_Based::LockedQueue<WorldPacket*, ACE_Thread_Mutex> m_recvQueue[NODE_MAX_PROCESS_TYPE];
+    LockedQueue<std::unique_ptr<WorldPacket>> m_recvQueue[NODE_MAX_PROCESS_TYPE];
     uint32          m_lastReceivedPacketTime;
     std::string     m_name;
     bool            m_isConnectedToMaster;

@@ -30,6 +30,7 @@
 #include <ace/TSS_T.h>
 #include <ace/Atomic_Op.h>
 #include "SqlPreparedStatement.h"
+#include <memory>
 
 class SqlTransaction;
 class SqlResultQueue;
@@ -245,7 +246,7 @@ class MANGOS_DLL_SPEC Database
         void AllowAsyncTransactions() { m_bAllowAsyncTransactions = true; }
         inline void AddToDelayQueue(SqlOperation* op) { m_delayQueue->add(op); }
         inline bool NextDelayedOperation(SqlOperation*& op) { return m_delayQueue->next(op); }
-        inline bool HasAsyncQuery() { return !(m_delayQueue->empty_unsafe()); }
+        inline bool HasAsyncQuery() { return !(m_delayQueue->empty()); }
 
         // Frees data, cancels scheduled queries, closes connection
         void StopServer();
@@ -294,8 +295,8 @@ class MANGOS_DLL_SPEC Database
         friend class SqlStatement;
         //PREPARED STATEMENT API
         //query function for prepared statements
-        bool ExecuteStmt(const SqlStatementID& id, SqlStmtParameters * params);
-        bool DirectExecuteStmt(const SqlStatementID& id, SqlStmtParameters * params);
+        bool ExecuteStmt(const SqlStatementID& id, std::unique_ptr<SqlStmtParameters> params);
+        bool DirectExecuteStmt(const SqlStatementID& id, std::unique_ptr<SqlStmtParameters> params);
 
         //connection helper counters
         int m_nQueryConnPoolSize;                               //current size of query connection pool
@@ -305,7 +306,7 @@ class MANGOS_DLL_SPEC Database
         typedef std::vector< SqlConnection * > SqlConnectionContainer;
         SqlConnectionContainer m_pQueryConnections;
 
-        typedef ACE_Based::LockedQueue<SqlOperation*, ACE_Thread_Mutex> SqlQueue;
+        typedef LockedQueue<SqlOperation*> SqlQueue;
         SqlQueue* m_delayQueue;
 
         SqlConnection * m_pAsyncConn;
