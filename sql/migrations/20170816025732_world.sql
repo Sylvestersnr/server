@@ -6,6 +6,27 @@ ALTER TABLE `areatrigger_teleport`
 	DROP PRIMARY KEY,
 	ADD PRIMARY KEY (`id`, `patch`);
 	
+-- Hall of Legends
+UPDATE `areatrigger_teleport` SET `patch`=2 WHERE `id`=2527;
+
+-- Champions Hall
+UPDATE `areatrigger_teleport` SET `patch`=2 WHERE `id`=2532;
+
+-- Dire Maul
+UPDATE `areatrigger_teleport` SET `patch`=1 WHERE `id` IN (3190, 3191, 3193, 3194, 3195, 3196, 3197, 3183, 3184, 3185, 3186, 3187, 3189);
+
+-- Blackwing Lair
+UPDATE `areatrigger_teleport` SET `patch`=4 WHERE `id`=3726;
+
+-- Zul Gurub
+UPDATE `areatrigger_teleport` SET `patch`=5 WHERE `id`=3928;
+
+-- Ahn Qiraj
+UPDATE `areatrigger_teleport` SET `patch`=7, `required_level`=60 WHERE `id` IN (4008, 4010);
+
+-- Naxxramas
+UPDATE `areatrigger_teleport` SET `patch`=9 WHERE `id`=4055;
+	
 ALTER TABLE `game_event`
 	ADD COLUMN `patch_min` TINYINT(3) UNSIGNED NOT NULL DEFAULT '0' AFTER `disabled`,
 	ADD COLUMN `patch_max` TINYINT(3) UNSIGNED NOT NULL DEFAULT '10' AFTER `patch_min`;
