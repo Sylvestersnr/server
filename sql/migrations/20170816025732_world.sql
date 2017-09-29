@@ -95,7 +95,7 @@ CREATE TABLE IF NOT EXISTS `battleground_template` (
 
 -- All battlegrounds disabled until 1.5.
 INSERT INTO `battleground_template` (`id`, `patch`, `MinPlayersPerTeam`, `MaxPlayersPerTeam`, `MinLvl`, `MaxLvl`, `AllianceStartLoc`, `AllianceStartO`, `HordeStartLoc`, `HordeStartO`) VALUES
-	(1, 0, 20, 40, 61, 61, 611, 2.72532, 610, 2.27452);
+	(1, 0, 15, 40, 61, 61, 611, 2.72532, 610, 2.27452);
 INSERT INTO `battleground_template` (`id`, `patch`, `MinPlayersPerTeam`, `MaxPlayersPerTeam`, `MinLvl`, `MaxLvl`, `AllianceStartLoc`, `AllianceStartO`, `HordeStartLoc`, `HordeStartO`) VALUES
 	(2, 0, 4, 10, 61, 61, 769, 3.14159, 770, 3.14159);
 INSERT INTO `battleground_template` (`id`, `patch`, `MinPlayersPerTeam`, `MaxPlayersPerTeam`, `MinLvl`, `MaxLvl`, `AllianceStartLoc`, `AllianceStartO`, `HordeStartLoc`, `HordeStartO`) VALUES
@@ -107,7 +107,7 @@ INSERT INTO `battleground_template` (`id`, `patch`, `MinPlayersPerTeam`, `MaxPla
 INSERT INTO `battleground_template` (`id`, `patch`, `MinPlayersPerTeam`, `MaxPlayersPerTeam`, `MinLvl`, `MaxLvl`, `AllianceStartLoc`, `AllianceStartO`, `HordeStartLoc`, `HordeStartO`) VALUES
 	(2, 3, 4, 10, 21, 60, 769, 3.14159, 770, 3.14159);
 INSERT INTO `battleground_template` (`id`, `patch`, `MinPlayersPerTeam`, `MaxPlayersPerTeam`, `MinLvl`, `MaxLvl`, `AllianceStartLoc`, `AllianceStartO`, `HordeStartLoc`, `HordeStartO`) VALUES
-	(1, 3, 30, 40, 51, 60, 611, 2.72532, 610, 2.27452);
+	(1, 3, 15, 40, 51, 60, 611, 2.72532, 610, 2.27452);
 
 -- World of Warcraft Client Patch 1.7.0 (2005-09-13)
 -- Arathi Basin added to the game.
@@ -125,5 +125,5 @@ INSERT INTO `battleground_template` (`id`, `patch`, `MinPlayersPerTeam`, `MaxPla
 	(2, 6, 4, 10, 10, 60, 769, 3.14159, 770, 3.14159);
 -- "The minimum number of players required to start a battle in Alterac Valley has been lowered to 20 (the maximum is still 40)."
 INSERT INTO `battleground_template` (`id`, `patch`, `MinPlayersPerTeam`, `MaxPlayersPerTeam`, `MinLvl`, `MaxLvl`, `AllianceStartLoc`, `AllianceStartO`, `HordeStartLoc`, `HordeStartO`) VALUES
-	(1, 6, 20, 40, 51, 60, 611, 2.72532, 610, 2.27452);
+	(1, 6, 10, 40, 51, 60, 611, 2.72532, 610, 2.27452);
 
