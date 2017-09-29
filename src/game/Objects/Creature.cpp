@@ -1368,7 +1368,9 @@ void Creature::SaveToDB(uint32 mapid)
        << GetHealth() << ","                               //curhealth
        << GetPower(POWER_MANA) << ","                      //curmana
        << (m_isDeadByDefault ? 1 : 0) << ","               //is_dead
-       << GetDefaultMovementType() << ","                 //default movement generator type
+       << GetDefaultMovementType() << ","                  //default movement generator type
+       << "0,"                                             //patch_min
+       << "10,"                                            //patch_max
        << m_isActiveObject << ")";
 
     WorldDatabase.PExecuteLog("%s", ss.str().c_str());
