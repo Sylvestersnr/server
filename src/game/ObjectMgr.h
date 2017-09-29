@@ -682,6 +682,8 @@ class ObjectMgr
             return mGameObjectForQuestSet.find(entry) != mGameObjectForQuestSet.end();
         }
 
+        static char* const GetPatchName();
+
         GossipText const* GetGossipText(uint32 Text_ID) const;
 
         WorldSafeLocsEntry const *GetClosestGraveYard(float x, float y, float z, uint32 MapId, Team team);

@@ -168,6 +168,37 @@ ObjectMgr::~ObjectMgr()
         delete itr->second;
 }
 
+char* const ObjectMgr::GetPatchName()
+{
+    switch(sWorld.GetWowPatch())
+    {
+        case 0:
+            return "Patch 1.2: Mysteries of Maraudon";
+        case 1:
+            return "Patch 1.3: Ruins of the Dire Maul";
+        case 2:
+            return "Patch 1.4: The Call to War";
+        case 3:
+            return "Patch 1.5: Battlegrounds";
+        case 4:
+            return "Patch 1.6: Assault on Blackwing Lair";
+        case 5:
+            return "Patch 1.7: Rise of the Blood God";
+        case 6:
+            return "Patch 1.8: Dragons of Nightmare";
+        case 7:
+            return "Patch 1.9: The Gates of Ahn'Qiraj";
+        case 8:
+            return "Patch 1.10: Storms of Azeroth";
+        case 9:
+            return "Patch 1.11: Shadow of the Necropolis";
+        case 10:
+            return "Patch 1.12: Drums of War";
+    }
+
+    return "Invalid Patch!";
+}
+
 // Nostalrius
 void ObjectMgr::LoadSpellDisabledEntrys()
 {
