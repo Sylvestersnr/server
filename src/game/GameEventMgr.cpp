@@ -516,7 +516,7 @@ void GameEventMgr::LoadFromDB()
 
     mGameEventQuests.resize(mGameEvent.size());
 
-    result = WorldDatabase.Query("SELECT quest, event FROM game_event_quest");
+    result = WorldDatabase.PQuery("SELECT quest, event FROM game_event_quest WHERE patch <= %u", sWorld.GetWowPatch());
 
     count = 0;
     if (!result)

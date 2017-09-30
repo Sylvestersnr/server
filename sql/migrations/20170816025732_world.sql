@@ -220,3 +220,25 @@ INSERT INTO `battleground_template` (`id`, `patch`, `MinPlayersPerTeam`, `MaxPla
 INSERT INTO `battleground_template` (`id`, `patch`, `MinPlayersPerTeam`, `MaxPlayersPerTeam`, `MinLvl`, `MaxLvl`, `AllianceStartLoc`, `AllianceStartO`, `HordeStartLoc`, `HordeStartO`) VALUES
 	(1, 6, 20, 40, 51, 60, 611, 2.72532, 610, 2.27452);
 
+ALTER TABLE `game_event_quest`
+	ADD COLUMN `patch` TINYINT(3) UNSIGNED NOT NULL DEFAULT '0' AFTER `event`;
+	
+ALTER TABLE `creature_questrelation`
+	ADD COLUMN `patch` TINYINT(3) UNSIGNED NOT NULL DEFAULT '0' AFTER `quest`,
+	DROP PRIMARY KEY,
+	ADD PRIMARY KEY (`id`, `quest`, `patch`);
+
+ALTER TABLE `creature_involvedrelation`
+	ADD COLUMN `patch` TINYINT(3) UNSIGNED NOT NULL DEFAULT '0' AFTER `quest`,
+	DROP PRIMARY KEY,
+	ADD PRIMARY KEY (`id`, `quest`, `patch`);
+
+ALTER TABLE `gameobject_questrelation`
+	ADD COLUMN `patch` TINYINT(3) UNSIGNED NOT NULL DEFAULT '0' AFTER `quest`,
+	DROP PRIMARY KEY,
+	ADD PRIMARY KEY (`id`, `quest`, `patch`);
+
+ALTER TABLE `gameobject_involvedrelation`
+	ADD COLUMN `patch` TINYINT(3) UNSIGNED NOT NULL DEFAULT '0' AFTER `quest`,
+	DROP PRIMARY KEY,
+	ADD PRIMARY KEY (`id`, `quest`, `patch`);
