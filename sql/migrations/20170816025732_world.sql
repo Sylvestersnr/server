@@ -31,6 +31,99 @@ ALTER TABLE `game_event`
 	ADD COLUMN `patch_min` TINYINT(3) UNSIGNED NOT NULL DEFAULT '0' AFTER `disabled`,
 	ADD COLUMN `patch_max` TINYINT(3) UNSIGNED NOT NULL DEFAULT '10' AFTER `patch_min`;
 	
+-- Midsummer Fire Festival - Added in 1.11.
+UPDATE `game_event` SET `patch_min`=9, `patch_max`=10 WHERE `entry`=1;
+
+-- Darkmoon Faire - Added in 1.6.
+UPDATE `game_event` SET `patch_min`=4, `patch_max`=10 WHERE `entry` IN (4, 5, 100, 101);
+
+-- Lunar Festival - Added in 1.9.
+UPDATE `game_event` SET `patch_min`=7, `patch_max`=10 WHERE `entry` IN (7, 76);
+
+-- Love is in the Air - Added in 1.9.
+UPDATE `game_event` SET `patch_min`=7, `patch_max`=10 WHERE `entry`=8;
+
+-- Children's Week - Added in 1.4.
+UPDATE `game_event` SET `patch_min`=2, `patch_max`=10 WHERE `entry`=10;
+
+-- Hallow's End - Added in 1.8.
+UPDATE `game_event` SET `patch_min`=6, `patch_max`=10 WHERE `entry`=12;
+
+-- Elemental Invasion - Added in 1.4.
+UPDATE `game_event` SET `patch_min`=2, `patch_max`=10 WHERE `entry` IN (13, 68, 69, 70, 71, 72, 73, 74, 75);
+
+-- Stranglethorn Fishing Extravaganza - Added in 1.7.
+UPDATE `game_event` SET `patch_min`=5, `patch_max`=10 WHERE `entry` IN (14, 15, 40);
+
+-- Gurubashi Arena Booty Run - Added in 1.4.
+UPDATE `game_event` SET `patch_min`=2, `patch_max`=10 WHERE `entry`=16;
+
+-- Scourge Invasion - Added in 1.11.
+UPDATE `game_event` SET `patch_min`=9, `patch_max`=9 WHERE `entry`=17;
+
+-- Call to Arms - Added in 1.7.
+UPDATE `game_event` SET `patch_min`=5, `patch_max`=10 WHERE `entry` IN (18, 19, 20, 25);
+
+-- AQ War Effort - Added in 1.9.
+UPDATE `game_event` SET `patch_min`=7, `patch_max`=7 WHERE `entry` IN (22, 23, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65);
+
+-- Edge of Madness - Added in 1.7.
+UPDATE `game_event` SET `patch_min`=5, `patch_max`=10 WHERE `entry` IN (29, 30, 31, 32);
+
+-- The Maul - Added in 1.3.
+UPDATE `game_event` SET `patch_min`=1, `patch_max`=10 WHERE `entry` IN (35, 36, 37, 42, 43, 44);
+
+-- Dragons of Nightmare - Added in 1.8.
+UPDATE `game_event` SET `patch_min`=6, `patch_max`=10 WHERE `entry`=66;
+
+-- AQ Gates - Closed until 1.9.
+UPDATE `game_event` SET `start_time`='2005-01-01 00:00:00', `end_time`='2025-01-01 01:00:00', `patch_min`=0, `patch_max`=7 WHERE `entry`=83;
+
+-- Event PVP Silithus - Added in 1.12.
+UPDATE `game_event` SET `patch_min`=10, `patch_max`=10 WHERE `entry`=103;
+
+-- Silithus @ 1.8 (revamp).
+UPDATE `game_event` SET `patch_min`=6, `patch_max`=10 WHERE `entry`=154;
+
+-- Argent dawn @ 1.11.
+UPDATE `game_event` SET `patch_min`=9, `patch_max`=10 WHERE `entry`=155;
+
+-- DM release : Recipes and misc item.
+UPDATE `game_event` SET `patch_min`=1, `patch_max`=10 WHERE `entry`=156;
+
+-- 1.10 Patch : Recipes.
+UPDATE `game_event` SET `patch_min`=8, `patch_max`=10 WHERE `entry`=158;
+
+-- DM Release : Cloth turning NPC.
+UPDATE `game_event` SET `patch_min`=1, `patch_max`=10 WHERE `entry`=159;
+
+-- 1.10 Patch : t0.5 Quest Chain.
+UPDATE `game_event` SET `patch_min`=8, `patch_max`=10 WHERE `entry`=160;
+
+-- Patch 1.3.
+UPDATE `game_event` SET `disabled`=0, `patch_min`=1, `patch_max`=10 WHERE `entry`=161;
+
+-- Patch 1.4 | 1.5.
+UPDATE `game_event` SET `disabled`=0, `patch_min`=2, `patch_max`=10 WHERE `entry`=162;
+
+-- Patch 1.6.
+UPDATE `game_event` SET `disabled`=0, `patch_min`=4, `patch_max`=10 WHERE `entry`=163;
+
+-- Patch 1.7.
+UPDATE `game_event` SET `disabled`=0, `patch_min`=5, `patch_max`=10 WHERE `entry`=164;
+
+-- Patch 1.8.
+UPDATE `game_event` SET `disabled`=0, `patch_min`=6, `patch_max`=10 WHERE `entry`=165;
+
+-- Patch 1.9.
+UPDATE `game_event` SET `disabled`=0, `patch_min`=7, `patch_max`=10 WHERE `entry`=166;
+
+-- Patch 1.10.
+UPDATE `game_event` SET `disabled`=0, `patch_min`=8, `patch_max`=10 WHERE `entry`=167;
+
+-- Patch 1.11.
+UPDATE `game_event` SET `disabled`=0, `patch_min`=9, `patch_max`=10 WHERE `entry`=168;
+	
 ALTER TABLE `creature`
 	ADD COLUMN `patch_min` TINYINT(3) UNSIGNED NOT NULL DEFAULT '0' AFTER `spawnFlags`,
 	ADD COLUMN `patch_max` TINYINT(3) UNSIGNED NOT NULL DEFAULT '10' AFTER `patch_min`;
