@@ -1,4 +1,4 @@
-INSERT INTO `migrations` VALUES ('20170816025732'); 
+INSERT INTO `migrations` VALUES ('20171030212926'); 
 
 -- Implement new progression system.
 ALTER TABLE `areatrigger_teleport`
