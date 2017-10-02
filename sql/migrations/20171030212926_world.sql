@@ -12936,6 +12936,13 @@ UPDATE `creature` SET `patch_min`=4 WHERE `id` IN (2302, 2804, 3890, 10360, 1498
 -- Arathi Basin Battlemasters
 UPDATE `creature` SET `patch_min`=5 WHERE `id` IN (857, 907, 12198, 15006, 15007, 15008);
 
+-- World of Warcraft Client Patch 1.8.1 (2005-10-25)
+-- Players can now turn in their old Battleground victory tokens, such 
+-- as the Arathi Resource Crate, for the new Marks of Honor implemented
+-- in 1.8. These exchange quests are available on the new Horde
+-- Warbringers and Alliance Brigadier Generals, respectively.
+UPDATE `creature` SET `patch_min`=6 WHERE `id` IN (15350, 15351);
+
 -- Fixing wrong items used for equipment templates. Mobs don't use player items!
 
 -- ERROR:Unknown item (entry=20723) in creature_equip_template.equipentry1 for entry = 2225, forced to 0.
