@@ -5461,7 +5461,7 @@ REPLACE INTO `quest_template` (`entry`, `Method`, `ZoneOrSort`, `MinLevel`, `Que
     (8192, 0, 1977, 58, 60, 62, 0, 0, 0, 0, 0, 0, 270, 3000, 0, 0, 0, 0, 64, 1, 0, 0, 0, 0, 0, 0, 0, 'Animist\'s Caress', 'Zanza can create the ancient troll enchantments with the right components. $BThe first is a primal token that must be taken from the most powerful of the Hakkari.$BThe second is a punctured voodoo doll. These can be found in the piles of refuse that litter this foul place. Look inside the jinxed hoodoo piles.$BThe last is the high elven facsimile of troll magic known as the Arcanum. I do not know where they can be found.', 'Bring me all three and I will create a powerful enchantment for you!', 'Use it well, $C. Show the Hakkari no mercy!', 'Bring me all three and I will create a powerful enchantment for you!', NULL, '', '', '', '', 0, 19821, 18331, 19716, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 19790, 0, 0, 0, 1, 0, 0, 0, 270, 0, 0, 0, 0, 250, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
     (8243, 0, 19, 58, 60, 0, 0, 0, 0, 0, 270, 21000, 270, 21000, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'Zanza\'s Potent Potables', 'With your increased status amongst the tribe comes access to some of our more potent potables. Behold... these brews are strong in the mojo - blessed by Zanza and fit for adventurers from all walks of life!', 'I will allow you to choose one from the three I offer; in exchange, I require three Zandalar Honor Tokens. Note that only the effects of a single one may course through your spirit at any given time.', 'Let me know when you\'re ready to barter!', 'I will allow you to choose one from the three I offer; in exchange, I require three Zandalar Honor Tokens. Note that only the effects of a single one may course through your spirit at any given time.', NULL, '', '', '', '', 19858, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20080, 20079, 20081, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 270, 0, 0, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
     -- These quests need to be at patch 0 because conditions check them but we disable them until they should be added.
-    (7786, 1, -344, 61, 60, 62, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 0, '[DISABLED] Thunderaan the Windseeker', 'Thunderaan the Windseeker\r\nThis quest is disabled until patch 1.6', 'To free Thunderaan the Windseeker from his prison, you must present the right and left halves of the Bindings of the Windseeker, 10 bars of Elementium, and the Essence of the Firelord to Highlord Demitrian in Silithus.', 'Even in dreams I did not dare foresee this day.$B$BBehold, mortal.$B$BBEHOLD HE WHO IS OLDER THAN EXISTENCE!$B$BBEHOLD HE WHO HAS FACED TITAN AND GOD ALIKE!$B$BRISE MY MASTER! BREAK FROM YOUR BONDS!', 'Bring the world to its knees if you must!', '', '', '', '', '', 17771, 19017, 18563, 18564, 10, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8580, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7786),
+    (7786, 1, -344, 61, 60, 62, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 0, '[DISABLED] Thunderaan the Windseeker', 'Thunderaan the Windseeker\r\nThis quest is disabled until patch 1.6', 'To free Thunderaan the Windseeker from his prison, you must present the right and left halves of the Bindings of the Windseeker, 10 bars of Elementium, and the Essence of the Firelord to Highlord Demitrian in Silithus.', 'Even in dreams I did not dare foresee this day.$B$BBehold, mortal.$B$BBEHOLD HE WHO IS OLDER THAN EXISTENCE!$B$BBEHOLD HE WHO HAS FACED TITAN AND GOD ALIKE!$B$BRISE MY MASTER! BREAK FROM YOUR BONDS!', 'Bring the world to its knees if you must!', '', '', '', '', '', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8580, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7786),
     (6131, 1, 361, 61, 48, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, '[DISABLED] Timbermaw Ally', 'Timbermaw Ally\r\nThis quest is disabled until patch 1.9.', 'Grazle wants you to prove yourself by killing 5 Deadwood Warriors, 5 Deadwood Pathfinders, and 5 Deadwood Gardeners.', 'We suffer much from the events of the past. Thank you for what you have done to help protect the Timbermaw.', 'Keep at it, $N. If you are to earn our trust, you will need to prove yourself to us.', '', '', '', '', '', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
     (8555, 1, 440, 61, 60, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 0, '[DISABLED] The Charge of the Dragonflights', 'The Charge of the Dragonflights\r\nThis quest is disabled until patch 1.9.', '', 'Eranikus, Vaelastrasz, and Azuregos... No doubt you know of these dragons, mortal. It is no coincidence, then, that they have played such influential roles as watchers of our world.$B$BUnfortunately (and my own naivety is partially to blame) whether by agents of the Old Gods or betrayal by those that would call them friend, each guardian has fallen to tragedy. The extent of which has fueled my own distrust towards your kind.$B$BSeek them out... And $R, prepare yourself for the worst.', NULL, NULL, '', '', '', '', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
     (8575, 1, 16, 61, 60, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '[DISABLED] Azuregos\'s Magical Ledger', 'Azuregos\'s Magical Ledger\r\nThis quest is disabled until patch 1.9.', 'Deliver Azuregos\'s Magical Ledger to Narain Soothfancy in Tanaris.', '<Narain eagerly examines the letter.>$B$BOutstanding, $R! What is it? I can\'t read a lick of Draconic.', 'Ooooh! Magical pulsing thingy! For me?', '', '', '', '', '', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
@@ -5630,8 +5630,10 @@ UPDATE `quest_template` SET `patch`= 1 WHERE `entry`= 7488; -- Lethtendris's Web
 UPDATE `quest_template` SET `patch`= 1 WHERE `entry`= 7489; -- Lethtendris's Web | NOTE: Dire Maul quest
 UPDATE `quest_template` SET `patch`= 1 WHERE `entry`= 7490; -- Head of Onyxia, added in 1.3.
 UPDATE `quest_template` SET `patch`= 1 WHERE `entry`= 7491; -- For All To See, added in 1.3.
+UPDATE `quest_template` SET `patch`= 1 WHERE `entry`= 7493; -- The Journey Has Just Begun, added in 1.3.
 UPDATE `quest_template` SET `patch`= 1 WHERE `entry`= 7495; -- Head of Onyxia, added in 1.3.
 UPDATE `quest_template` SET `patch`= 1 WHERE `entry`= 7496; -- Celebrating Good Times, added in 1.3.
+UPDATE `quest_template` SET `patch`= 1 WHERE `entry`= 7497; -- The Journey Has Just Begun, added in 1.3.
 UPDATE `quest_template` SET `patch`= 1 WHERE `entry`= 7492; -- Camp Mojache | NOTE: Dire Maul quest
 UPDATE `quest_template` SET `patch`= 1 WHERE `entry`= 7494; -- Feathermoon Stronghold | NOTE: Dire Maul quest
 UPDATE `quest_template` SET `patch`= 1 WHERE `entry`= 7498; -- Garona: A Study on Stealth and Treachery | NOTE: Dire Maul quest
@@ -6975,9 +6977,11 @@ UPDATE `creature_involvedrelation` SET `patch`=1 WHERE `quest`=7489;
 UPDATE `creature_involvedrelation` SET `patch`=1 WHERE `quest`=7490;
 UPDATE `creature_involvedrelation` SET `patch`=1 WHERE `quest`=7491;
 UPDATE `creature_involvedrelation` SET `patch`=1 WHERE `quest`=7492;
+UPDATE `creature_involvedrelation` SET `patch`=1 WHERE `quest`=7493;
 UPDATE `creature_involvedrelation` SET `patch`=1 WHERE `quest`=7494;
 UPDATE `creature_involvedrelation` SET `patch`=1 WHERE `quest`=7495;
 UPDATE `creature_involvedrelation` SET `patch`=1 WHERE `quest`=7496;
+UPDATE `creature_involvedrelation` SET `patch`=1 WHERE `quest`=7497;
 UPDATE `creature_involvedrelation` SET `patch`=1 WHERE `quest`=7498;
 UPDATE `creature_involvedrelation` SET `patch`=1 WHERE `quest`=7499;
 UPDATE `creature_involvedrelation` SET `patch`=1 WHERE `quest`=7500;
@@ -8290,8 +8294,10 @@ UPDATE `creature_questrelation` SET `patch`=1 WHERE `quest`=7488;
 UPDATE `creature_questrelation` SET `patch`=1 WHERE `quest`=7489;
 UPDATE `creature_questrelation` SET `patch`=1 WHERE `quest`=7491;
 UPDATE `creature_questrelation` SET `patch`=1 WHERE `quest`=7492;
+UPDATE `creature_questrelation` SET `patch`=1 WHERE `quest`=7493;
 UPDATE `creature_questrelation` SET `patch`=1 WHERE `quest`=7494;
 UPDATE `creature_questrelation` SET `patch`=1 WHERE `quest`=7496;
+UPDATE `creature_questrelation` SET `patch`=1 WHERE `quest`=7497;
 UPDATE `creature_questrelation` SET `patch`=1 WHERE `quest`=7508;
 UPDATE `creature_questrelation` SET `patch`=1 WHERE `quest`=7509;
 UPDATE `creature_questrelation` SET `patch`=2 WHERE `quest`=7541;
@@ -12919,3 +12925,130 @@ INSERT INTO `creature_involvedrelation` (`id`, `quest`, `patch`) VALUES (15022, 
 INSERT INTO `creature_involvedrelation` (`id`, `quest`, `patch`) VALUES (15022, 8163, 5);
 INSERT INTO `creature_involvedrelation` (`id`, `quest`, `patch`) VALUES (15022, 8164, 5);
 INSERT INTO `creature_involvedrelation` (`id`, `quest`, `patch`) VALUES (15022, 8165, 5);
+
+-- World of Warcraft Client Patch 1.6.0 (2005-07-12)
+-- There is a new way to enter the battleground queues. Battlemasters!
+
+-- Alterac Valley Battlemasters
+UPDATE `creature` SET `patch_min`=4 WHERE `id` IN (347, 5118, 7410, 7427, 12197, 14942);
+-- Warsong Gulch Battlemasters
+UPDATE `creature` SET `patch_min`=4 WHERE `id` IN (2302, 2804, 3890, 10360, 14981, 14982);
+-- Arathi Basin Battlemasters
+UPDATE `creature` SET `patch_min`=5 WHERE `id` IN (857, 907, 12198, 15006, 15007, 15008);
+
+-- Fixing wrong items used for equipment templates. Mobs don't use player items!
+
+-- ERROR:Unknown item (entry=20723) in creature_equip_template.equipentry1 for entry = 2225, forced to 0.
+UPDATE `creature_equip_template` SET `equipentry1`=1910 WHERE `entry`=2225;
+
+-- ERROR:Unknown item (entry=20694) in creature_equip_template.equipentry1 for entry = 5139, forced to 0.
+UPDATE `creature_equip_template` SET `equipentry1`=19053 WHERE `entry`=5139;
+
+-- ERROR:Unknown item (entry=20556) in creature_equip_template.equipentry1 for entry = 10364, forced to 0.
+UPDATE `creature_equip_template` SET `equipentry1`=13337 WHERE `entry`=10364;
+
+-- ERROR:Unknown item (entry=19852) in creature_equip_template.equipentry1 for entry = 10983, forced to 0.
+UPDATE `creature_equip_template` SET `equipentry1`=12629, `equipentry2`=10617 WHERE `entry`=10983;
+
+-- ERROR:Unknown item (entry=20556) in creature_equip_template.equipentry1 for entry = 11679, forced to 0.
+UPDATE `creature_equip_template` SET `equipentry1`=10617, `equipentry2`=4993 WHERE `entry`=11679;
+
+-- ERROR:Unknown item (entry=19852) in creature_equip_template.equipentry1 for entry = 12156, forced to 0.
+UPDATE `creature_equip_template` SET `equipentry1`=12290 WHERE `entry`=12156;
+
+-- ERROR:Unknown item (entry=19921) in creature_equip_template.equipentry1 for entry = 12157, forced to 0.
+-- ERROR:Unknown item (entry=19921) in creature_equip_template.equipentry2 for entry = 12157, forced to 0.
+UPDATE `creature_equip_template` SET `equipentry1`=14535, `equipentry2`=0 WHERE `entry`=12157;
+
+-- ERROR:Unknown item (entry=20556) in creature_equip_template.equipentry1 for entry = 13443, forced to 0.
+UPDATE `creature_equip_template` SET `equipentry1`=13339, `equipentry2`=0, `equipentry3`=5262 WHERE `entry`=13443;
+
+-- ERROR:Unknown item (entry=22333) in creature_equip_template.equipentry1 for entry = 13552, forced to 0.
+UPDATE `creature_equip_template` SET `equipentry1`=12950 WHERE `entry`=13552;
+
+-- ERROR:Unknown item (entry=22333) in creature_equip_template.equipentry1 for entry = 13553, forced to 0.
+UPDATE `creature_equip_template` SET `equipentry1`=13925 WHERE `entry`=13553;
+
+-- ERROR:Unknown item (entry=20556) in creature_equip_template.equipentry1 for entry = 13956, forced to 0.
+UPDATE `creature_equip_template` SET `equipentry1`=12786 WHERE `entry`=13956;
+
+-- ERROR:Unknown item (entry=19900) in creature_equip_template.equipentry1 for entry = 13957, forced to 0.
+UPDATE `creature_equip_template` SET `equipentry1`=11019, `equipentry2`=13319 WHERE `entry`=13957;
+
+-- ERROR:Unknown item (entry=22384) in creature_equip_template.equipentry1 for entry = 14186, forced to 0.
+UPDATE `creature_equip_template` SET `equipentry1`=18062 WHERE `entry`=14186;
+
+-- ERROR:Unknown item (entry=18410) in creature_equip_template.equipentry1 for entry = 12048, forced to 0.
+DELETE FROM `creature_equip_template` WHERE `entry` IN (12048, 13327, 13336, 13427);
+INSERT INTO `creature_equip_template` (`entry`, `patch`, `equipentry1`, `equipentry2`, `equipentry3`) VALUES (12048, 0, 3432, 0, 14105);
+INSERT INTO `creature_equip_template` (`entry`, `patch`, `equipentry1`, `equipentry2`, `equipentry3`) VALUES (13327, 0, 14881, 0, 5258);
+INSERT INTO `creature_equip_template` (`entry`, `patch`, `equipentry1`, `equipentry2`, `equipentry3`) VALUES (13336, 0, 14882, 0, 2550);
+INSERT INTO `creature_equip_template` (`entry`, `patch`, `equipentry1`, `equipentry2`, `equipentry3`) VALUES (13427, 0, 17382, 0, 5258);
+UPDATE `creature_template` SET `equipment_id`=12048 WHERE `entry`=12048;
+UPDATE `creature_template` SET `equipment_id`=13327 WHERE `entry`=13327;
+UPDATE `creature_template` SET `equipment_id`=13336 WHERE `entry`=13336;
+UPDATE `creature_template` SET `equipment_id`=13427 WHERE `entry`=13427;
+
+-- ERROR:Unknown item (entry=19104) in creature_equip_template.equipentry1 for entry = 13086, forced to 0.
+UPDATE `creature_equip_template` SET `equipentry1`=14533, `equipentry2`=12980, `equipentry3`=5260 WHERE `entry`=13086;
+
+-- ERROR:Unknown item (entry=18372) in creature_equip_template.equipentry2 for entry = 13088, forced to 0.
+UPDATE `creature_equip_template` SET `equipentry1`=10617, `equipentry2`=17283 WHERE `entry`=13088;
+
+-- ERROR:Unknown item (entry=18410) in creature_equip_template.equipentry1 for entry = 13139, forced to 0.
+UPDATE `creature_equip_template` SET `equipentry1`=12403, `equipentry3`=5258 WHERE `entry`=13139;
+
+-- ERROR:Unknown item (entry=19104) in creature_equip_template.equipentry1 for entry = 13153, forced to 0.
+UPDATE `creature_equip_template` SET `equipentry1`=12883, `equipentry2`=13630, `equipentry3`=14105 WHERE `entry`=13153;
+
+-- ERROR:Unknown item (entry=18410) in creature_equip_template.equipentry1 for entry = 13299, forced to 0.
+UPDATE `creature_equip_template` SET `equipentry1`=14882, `equipentry2`=17482, `equipentry3`=5261 WHERE `entry`=13299;
+
+-- ERROR:Unknown item (entry=18485) in creature_equip_template.equipentry2 for entry = 13337, forced to 0.
+DELETE FROM `creature_equip_template` WHERE `entry` IN (13337, 13428);
+INSERT INTO `creature_equip_template` (`entry`, `patch`, `equipentry1`, `equipentry2`, `equipentry3`) VALUES (13337, 0, 13625, 13628, 5261);
+INSERT INTO `creature_equip_template` (`entry`, `patch`, `equipentry1`, `equipentry2`, `equipentry3`) VALUES (13428, 0, 14877, 13319, 5259);
+UPDATE `creature_template` SET `equipment_id`=13337 WHERE `entry`=13337;
+UPDATE `creature_template` SET `equipment_id`=13428 WHERE `entry`=13428;
+
+-- ERROR:Unknown item (entry=19562) in creature_equip_template.equipentry2 for entry = 13358, forced to 0.
+-- ERROR:Unknown item (entry=19562) in creature_equip_template.equipentry3 for entry = 13358, forced to 0.
+UPDATE `creature_equip_template` SET `equipentry1`=0, `equipentry2`=5262, `equipentry3`=5262 WHERE `entry`=13358;
+
+-- ERROR:Unknown item (entry=19562) in creature_equip_template.equipentry1 for entry = 13359, forced to 0.
+-- ERROR:Unknown item (entry=19562) in creature_equip_template.equipentry3 for entry = 13359, forced to 0.
+DELETE FROM `creature_equip_template` WHERE `entry` IN (13359, 13516, 13517, 13518, 13519);
+INSERT INTO `creature_equip_template` (`entry`, `patch`, `equipentry1`, `equipentry2`, `equipentry3`) VALUES (13359, 0, 0, 0, 5261);
+INSERT INTO `creature_equip_template` (`entry`, `patch`, `equipentry1`, `equipentry2`, `equipentry3`) VALUES (13516, 0, 17462, 0, 14105);
+INSERT INTO `creature_equip_template` (`entry`, `patch`, `equipentry1`, `equipentry2`, `equipentry3`) VALUES (13517, 0, 10611, 0, 14118);
+INSERT INTO `creature_equip_template` (`entry`, `patch`, `equipentry1`, `equipentry2`, `equipentry3`) VALUES (13518, 0, 10611, 0, 5262);
+INSERT INTO `creature_equip_template` (`entry`, `patch`, `equipentry1`, `equipentry2`, `equipentry3`) VALUES (13519, 0, 12290, 0, 5261);
+UPDATE `creature_template` SET `equipment_id`=13359 WHERE `entry`=13359;
+UPDATE `creature_template` SET `equipment_id`=13516 WHERE `entry`=13516;
+UPDATE `creature_template` SET `equipment_id`=13517 WHERE `entry`=13517;
+UPDATE `creature_template` SET `equipment_id`=13518 WHERE `entry`=13518;
+UPDATE `creature_template` SET `equipment_id`=13519 WHERE `entry`=13519;
+
+-- ERROR:Unknown item (entry=19106) in creature_equip_template.equipentry1 for entry = 13446, forced to 0.
+UPDATE `creature_equip_template` SET `equipentry1`=5278, `equipentry2`=5278, `equipentry3`=13147 WHERE `entry`=13446;
+
+-- ERROR:Unknown item (entry=19104) in creature_equip_template.equipentry1 for entry = 13447, forced to 0.
+UPDATE `creature_equip_template` SET `equipentry1`=13312, `equipentry2`=12995, `equipentry3`=0 WHERE `entry`=13447;
+
+-- ERROR:Unknown item (entry=19104) in creature_equip_template.equipentry1 for entry = 13550, forced to 0.
+UPDATE `creature_equip_template` SET `equipentry1`=14533, `equipentry2`=12980 WHERE `entry`=13550;
+UPDATE `creature_template` SET `equipment_id`=13550 WHERE `entry`=13550;
+
+-- ERROR:Unknown item (entry=19104) in creature_equip_template.equipentry1 for entry = 13551, forced to 0.
+UPDATE `creature_equip_template` SET `equipentry1`=12883, `equipentry2`=12980 WHERE `entry`=13551;
+UPDATE `creature_template` SET `equipment_id`=13551 WHERE `entry`=13551;
+
+-- ERROR:Unknown item (entry=19104) in creature_equip_template.equipentry1 for entry = 13554, forced to 0.
+UPDATE `creature_equip_template` SET `equipentry1`=12901 WHERE `entry`=13554;
+
+-- Add dummy item substitute for Eternal Quintessence to fix condition errors.
+INSERT INTO `item_template` (`entry`, `patch`, `class`, `subclass`, `name`, `displayid`, `Quality`, `Flags`, `BuyCount`, `BuyPrice`, `SellPrice`, `InventoryType`, `AllowableClass`, `AllowableRace`, `ItemLevel`, `RequiredLevel`, `RequiredSkill`, `RequiredSkillRank`, `requiredspell`, `requiredhonorrank`, `RequiredCityRank`, `RequiredReputationFaction`, `RequiredReputationRank`, `maxcount`, `stackable`, `ContainerSlots`, `stat_type1`, `stat_value1`, `stat_type2`, `stat_value2`, `stat_type3`, `stat_value3`, `stat_type4`, `stat_value4`, `stat_type5`, `stat_value5`, `stat_type6`, `stat_value6`, `stat_type7`, `stat_value7`, `stat_type8`, `stat_value8`, `stat_type9`, `stat_value9`, `stat_type10`, `stat_value10`, `dmg_min1`, `dmg_max1`, `dmg_type1`, `dmg_min2`, `dmg_max2`, `dmg_type2`, `dmg_min3`, `dmg_max3`, `dmg_type3`, `dmg_min4`, `dmg_max4`, `dmg_type4`, `dmg_min5`, `dmg_max5`, `dmg_type5`, `armor`, `holy_res`, `fire_res`, `nature_res`, `frost_res`, `shadow_res`, `arcane_res`, `delay`, `ammo_type`, `RangedModRange`, `spellid_1`, `spelltrigger_1`, `spellcharges_1`, `spellppmRate_1`, `spellcooldown_1`, `spellcategory_1`, `spellcategorycooldown_1`, `spellid_2`, `spelltrigger_2`, `spellcharges_2`, `spellppmRate_2`, `spellcooldown_2`, `spellcategory_2`, `spellcategorycooldown_2`, `spellid_3`, `spelltrigger_3`, `spellcharges_3`, `spellppmRate_3`, `spellcooldown_3`, `spellcategory_3`, `spellcategorycooldown_3`, `spellid_4`, `spelltrigger_4`, `spellcharges_4`, `spellppmRate_4`, `spellcooldown_4`, `spellcategory_4`, `spellcategorycooldown_4`, `spellid_5`, `spelltrigger_5`, `spellcharges_5`, `spellppmRate_5`, `spellcooldown_5`, `spellcategory_5`, `spellcategorycooldown_5`, `bonding`, `description`, `PageText`, `LanguageID`, `PageMaterial`, `startquest`, `lockid`, `Material`, `sheath`, `RandomProperty`, `block`, `itemset`, `MaxDurability`, `area`, `Map`, `BagFamily`, `ScriptName`, `DisenchantID`, `FoodType`, `minMoneyLoot`, `maxMoneyLoot`, `Duration`, `ExtraFlags`, `OtherTeamEntry`) VALUES (22754, 0, 15, 0, '[DISABLED] Eternal Quintessence', 6659, 0, 0, 1, 0, 0, 0, -1, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, -1, 0, 0, 0, 0, -1, 0, -1, 0, 0, 0, 0, -1, 0, -1, 0, 0, 0, 0, -1, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, '', 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, '', 0, 0, 0, 0, 0, 0, 1);
+-- Same for Rune of the Dawn.
+DELETE FROM `item_template` WHERE `entry`=19812;
+INSERT INTO `item_template` (`entry`, `patch`, `class`, `subclass`, `name`, `displayid`, `Quality`, `Flags`, `BuyCount`, `BuyPrice`, `SellPrice`, `InventoryType`, `AllowableClass`, `AllowableRace`, `ItemLevel`, `RequiredLevel`, `RequiredSkill`, `RequiredSkillRank`, `requiredspell`, `requiredhonorrank`, `RequiredCityRank`, `RequiredReputationFaction`, `RequiredReputationRank`, `maxcount`, `stackable`, `ContainerSlots`, `stat_type1`, `stat_value1`, `stat_type2`, `stat_value2`, `stat_type3`, `stat_value3`, `stat_type4`, `stat_value4`, `stat_type5`, `stat_value5`, `stat_type6`, `stat_value6`, `stat_type7`, `stat_value7`, `stat_type8`, `stat_value8`, `stat_type9`, `stat_value9`, `stat_type10`, `stat_value10`, `dmg_min1`, `dmg_max1`, `dmg_type1`, `dmg_min2`, `dmg_max2`, `dmg_type2`, `dmg_min3`, `dmg_max3`, `dmg_type3`, `dmg_min4`, `dmg_max4`, `dmg_type4`, `dmg_min5`, `dmg_max5`, `dmg_type5`, `armor`, `holy_res`, `fire_res`, `nature_res`, `frost_res`, `shadow_res`, `arcane_res`, `delay`, `ammo_type`, `RangedModRange`, `spellid_1`, `spelltrigger_1`, `spellcharges_1`, `spellppmRate_1`, `spellcooldown_1`, `spellcategory_1`, `spellcategorycooldown_1`, `spellid_2`, `spelltrigger_2`, `spellcharges_2`, `spellppmRate_2`, `spellcooldown_2`, `spellcategory_2`, `spellcategorycooldown_2`, `spellid_3`, `spelltrigger_3`, `spellcharges_3`, `spellppmRate_3`, `spellcooldown_3`, `spellcategory_3`, `spellcategorycooldown_3`, `spellid_4`, `spelltrigger_4`, `spellcharges_4`, `spellppmRate_4`, `spellcooldown_4`, `spellcategory_4`, `spellcategorycooldown_4`, `spellid_5`, `spelltrigger_5`, `spellcharges_5`, `spellppmRate_5`, `spellcooldown_5`, `spellcategory_5`, `spellcategorycooldown_5`, `bonding`, `description`, `PageText`, `LanguageID`, `PageMaterial`, `startquest`, `lockid`, `Material`, `sheath`, `RandomProperty`, `block`, `itemset`, `MaxDurability`, `area`, `Map`, `BagFamily`, `ScriptName`, `DisenchantID`, `FoodType`, `minMoneyLoot`, `maxMoneyLoot`, `Duration`, `ExtraFlags`, `OtherTeamEntry`) VALUES (19812, 5, 4, 0, 'Rune of the Dawn', 20984, 3, 32768, 1, 0, 0, 12, -1, -1, 61, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 24198, 1, 0, 0, -1, 0, -1, 0, 0, 0, 0, -1, 0, -1, 0, 0, 0, 0, -1, 0, -1, 0, 0, 0, 0, -1, 0, -1, 0, 0, 0, 0, 0, 0, 0, 1, '', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 0, 0, 0, 0, 0, 0, 1);
+INSERT INTO `item_template` (`entry`, `patch`, `class`, `subclass`, `name`, `displayid`, `Quality`, `Flags`, `BuyCount`, `BuyPrice`, `SellPrice`, `InventoryType`, `AllowableClass`, `AllowableRace`, `ItemLevel`, `RequiredLevel`, `RequiredSkill`, `RequiredSkillRank`, `requiredspell`, `requiredhonorrank`, `RequiredCityRank`, `RequiredReputationFaction`, `RequiredReputationRank`, `maxcount`, `stackable`, `ContainerSlots`, `stat_type1`, `stat_value1`, `stat_type2`, `stat_value2`, `stat_type3`, `stat_value3`, `stat_type4`, `stat_value4`, `stat_type5`, `stat_value5`, `stat_type6`, `stat_value6`, `stat_type7`, `stat_value7`, `stat_type8`, `stat_value8`, `stat_type9`, `stat_value9`, `stat_type10`, `stat_value10`, `dmg_min1`, `dmg_max1`, `dmg_type1`, `dmg_min2`, `dmg_max2`, `dmg_type2`, `dmg_min3`, `dmg_max3`, `dmg_type3`, `dmg_min4`, `dmg_max4`, `dmg_type4`, `dmg_min5`, `dmg_max5`, `dmg_type5`, `armor`, `holy_res`, `fire_res`, `nature_res`, `frost_res`, `shadow_res`, `arcane_res`, `delay`, `ammo_type`, `RangedModRange`, `spellid_1`, `spelltrigger_1`, `spellcharges_1`, `spellppmRate_1`, `spellcooldown_1`, `spellcategory_1`, `spellcategorycooldown_1`, `spellid_2`, `spelltrigger_2`, `spellcharges_2`, `spellppmRate_2`, `spellcooldown_2`, `spellcategory_2`, `spellcategorycooldown_2`, `spellid_3`, `spelltrigger_3`, `spellcharges_3`, `spellppmRate_3`, `spellcooldown_3`, `spellcategory_3`, `spellcategorycooldown_3`, `spellid_4`, `spelltrigger_4`, `spellcharges_4`, `spellppmRate_4`, `spellcooldown_4`, `spellcategory_4`, `spellcategorycooldown_4`, `spellid_5`, `spelltrigger_5`, `spellcharges_5`, `spellppmRate_5`, `spellcooldown_5`, `spellcategory_5`, `spellcategorycooldown_5`, `bonding`, `description`, `PageText`, `LanguageID`, `PageMaterial`, `startquest`, `lockid`, `Material`, `sheath`, `RandomProperty`, `block`, `itemset`, `MaxDurability`, `area`, `Map`, `BagFamily`, `ScriptName`, `DisenchantID`, `FoodType`, `minMoneyLoot`, `maxMoneyLoot`, `Duration`, `ExtraFlags`, `OtherTeamEntry`) VALUES (19812, 0, 15, 0, '[DISABLED] Rune of the Dawn', 6659, 0, 0, 1, 0, 0, 0, -1, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, -1, 0, 0, 0, 0, -1, 0, -1, 0, 0, 0, 0, -1, 0, -1, 0, 0, 0, 0, -1, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, '', 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, '', 0, 0, 0, 0, 0, 0, 1);
