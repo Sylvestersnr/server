@@ -401,11 +401,11 @@ WowPatch = 0
 
 LogSQL = 1
 PidFile = ""
-LogLevel = 3
+LogLevel = 1
 LogTime = 0
 LogFile = "Server.log"
 LogTimestamp = 0
-LogFileLevel = 0
+LogFileLevel = 1
 LogFilter_TransportMoves = 1
 LogFilter_CreatureMoves = 1
 LogFilter_VisibilityChanges = 1
@@ -807,7 +807,7 @@ Event.Announce = 0
 BeepAtStart = 1
 ShowProgressBars = 0
 WaitAtStartupError = 0
-Motd = "Welcome to Elysium Project!"
+Motd = "Welcome to Light's Hope!"
 
 ###################################################################################################################
 # PLAYER INTERACTION
@@ -883,6 +883,10 @@ TalentsInspecting = 1
 #        Reduce for better performances.
 #        Default: 15 yards
 #
+#    MaxCreatureSummonLimit
+#       Game objects (and other creatures) won't be able to summon more creatures than this limit
+#       Default: 100
+#
 #    Rate.Creature.Aggro
 #        Aggro radius percent or off.
 #        Default: 1   - 100%
@@ -910,6 +914,11 @@ TalentsInspecting = 1
 #    WorldBossLevelDiff
 #        Difference for boss dynamic level with target
 #        Default: 3
+#
+#    SendLootRollUponReconnect
+#         Send active loot roll windows when a player reconnects
+#         Default: 0  - not send
+#                  1  - send
 #
 #    Corpse.EmptyLootShow
 #        If target can have loot (or can be skining after loot) but no loot generated still show loot window
@@ -979,6 +988,7 @@ Rate.Creature.Aggro = 1
 MaxCreaturesAttackRadius = 40
 MaxPlayersStealthDetectRange = 40
 MaxCreaturesStealthDetectRange = 15
+MaxCreatureSummonLimit = 100
 CreatureFamilyFleeAssistanceRadius = 30
 CreatureFamilyAssistanceRadius = 10
 CreatureFamilyAssistanceDelay = 1500
@@ -991,6 +1001,7 @@ Corpse.Decay.ELITE = 600
 Corpse.Decay.RAREELITE = 1200
 Corpse.Decay.WORLDBOSS = 3600
 Rate.Corpse.Decay.Looted = 0.0
+SendLootRollUponReconnect = 0
 Rate.Creature.Normal.Damage = 1
 Rate.Creature.Elite.Elite.Damage = 1
 Rate.Creature.Elite.RAREELITE.Damage = 1
@@ -1252,6 +1263,10 @@ Visibility.AIRelocationNotifyDelay = 1000
 #        Minimum auction deposit size in copper
 #        Default: 0
 #
+#    Auction.AccountConcurrentLimit
+#        Maximum auctions (per auction house, including shared) an account can have posted at once. eg. limit of 100 -> 100 on Alliance auction house, 100 on Neutral auction house
+#        Default: 0
+#
 #    Rate.Honor
 #        Honor gain rate
 #
@@ -1400,6 +1415,7 @@ Rate.Auction.Time = 1
 Rate.Auction.Deposit = 1
 Rate.Auction.Cut = 1
 Auction.Deposit.Min = 0
+Auction.AccountConcurrentLimit = 0
 Rate.Honor = 1
 Rate.Mining.Amount = 1
 Rate.Mining.Next   = 1
@@ -1438,6 +1454,7 @@ Corpses.UpdateMinutes = 20
 Bones.ExpireMinutes   = 60
 Death.Ghost.RunSpeed.World = 1.0
 Death.Ghost.RunSpeed.Battleground = 1.0
+Rate.WarEffortResourceComplete = 0.0
 
 ###################################################################################################################
 # BATTLEGROUND CONFIG
@@ -1720,8 +1737,8 @@ MapUpdate.VisibilityUpdate.MaxThreads   = 4
 MapUpdate.VisibilityUpdate.Timeout      = 100
 
 # Hardcode multithreading options
-MapUpdate.UpdatePacketsDiff             = 0
-MapUpdate.UpdatePlayersDiff             = 0
+MapUpdate.UpdatePacketsDiff             = 100
+MapUpdate.UpdatePlayersDiff             = 100
 MapUpdate.UpdateCellsDiff               = 100
 
 # Parallelized execution of cells from same map
@@ -1736,8 +1753,8 @@ AsyncTasks.Threads                      = 1
 
 # Recommended value: 1. Else, can cause crashes if 'MapUpdate.Threads' > 1 (one map loads a tile, while the other uses pathfinding etc ...)
 # Disable on dev realms (speedup startup by 90%)
-Terrain.Preload.Continents = 1
-Terrain.Preload.Instances  = 1
+Terrain.Preload.Continents = 0
+Terrain.Preload.Instances  = 0
 
 AsyncQueriesTickTimeout = 0
 

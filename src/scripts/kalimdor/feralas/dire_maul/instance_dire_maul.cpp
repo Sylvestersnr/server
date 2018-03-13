@@ -1345,17 +1345,15 @@ enum
 {
     GOSSIP_MENU_MOLDAR_1                    = 6907,
     GOSSIP_MENU_MOLDAR_2                    = 6908,    
-    GOSSIP_ITEM_MOLDAR                      = -3100010,
+    GOSSIP_ITEM_MOLDAR                      = 9401,
     
     GOSSIP_MENU_FENGUS_1                    = 6903,
     GOSSIP_MENU_FENGUS_2                    = 6904, 
-    GOSSIP_ITEM_FENGUS                      = -3100011,
+    GOSSIP_ITEM_FENGUS                      = 9394,
     
     GOSSIP_MENU_SLIPKIK_1                   = 6905,
-    GOSSIP_MENU_SLIPKIK_2                   = 6906, 
-    GOSSIP_MENU_SLIPKIK_ALT_1               = 6941,
-    GOSSIP_MENU_SLIPKIK_ALT_2               = 6942,
-    GOSSIP_ITEM_SLIPKIK                     = -3100012
+    GOSSIP_MENU_SLIPKIK_2                   = 6906,
+    GOSSIP_ITEM_SLIPKIK                     = 9398
 };
 
 bool GossipHello_boss_guards(Player* pPlayer, Creature * pCreature) 
@@ -1374,7 +1372,7 @@ bool GossipHello_boss_guards(Player* pPlayer, Creature * pCreature)
                 break;
             case NPC_GUARD_SLIPKIK:
                 pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_SLIPKIK, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
-                pPlayer->SEND_GOSSIP_MENU(pCreature->HasAura(SPELL_ICE_LOCK) ? GOSSIP_MENU_SLIPKIK_1 : GOSSIP_MENU_SLIPKIK_ALT_1, pCreature->GetObjectGuid());
+                pPlayer->SEND_GOSSIP_MENU(GOSSIP_MENU_SLIPKIK_1, pCreature->GetObjectGuid());
                 break;
         }
         return true;
@@ -1398,7 +1396,7 @@ bool GossipSelect_boss_guards(Player* pPlayer, Creature* pCreature, uint32 uiSen
                 pCreature->CastSpell(pPlayer, SPELL_FENGUS_FEROCITY, true);
                 break;
             case NPC_GUARD_SLIPKIK:
-                pPlayer->SEND_GOSSIP_MENU(pCreature->HasAura(SPELL_ICE_LOCK) ? GOSSIP_MENU_SLIPKIK_2 : GOSSIP_MENU_SLIPKIK_ALT_2, pCreature->GetObjectGuid());
+                pPlayer->SEND_GOSSIP_MENU(GOSSIP_MENU_SLIPKIK_2, pCreature->GetObjectGuid());
                 pCreature->CastSpell(pPlayer, SPELL_SLIPKIKS_SAVVY, true);
                 break;
         }
@@ -1437,7 +1435,7 @@ struct go_fixed_trap : public GameObjectAI
                 pSlipkik->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
                 pSlipkik->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_OOC_NOT_ATTACKABLE);
                 pSlipkik->CastSpell(pSlipkik, SPELL_ICE_LOCK, true, NULL);
-                me->SendGameObjectCustomAnim(me->GetObjectGuid());
+                me->SendGameObjectCustomAnim();
                 me->Delete();
             }
         }
@@ -1709,7 +1707,7 @@ struct boss_prince_tortheldrinAI:public ScriptedAI
         whirlwindTimer       = urand(14000, 22000);
 
         // Thrash
-        DoCastSpellIfCan(m_creature, SPELL_THRASH, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
+        DoCastSpellIfCan(m_creature, SPELL_THRASH, CF_TRIGGERED | CF_AURA_NOT_PRESENT);
     }
 
     void UpdateAI(const uint32 uiDiff)
@@ -2092,7 +2090,7 @@ struct boss_alzzin_the_wildshaperAI : ScriptedAI
             // Wither
             if (m_uiWitherTimer < uiDiff)
             {                    
-                if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_WITHER, CAST_AURA_NOT_PRESENT) == CAST_OK)
+                if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_WITHER, CF_AURA_NOT_PRESENT) == CAST_OK)
                     m_uiWitherTimer = urand(8000, 10000);
             }
             else
@@ -2113,7 +2111,7 @@ struct boss_alzzin_the_wildshaperAI : ScriptedAI
             // Mangle
             if (m_uiMangleTimer < uiDiff)
             {
-                if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_MANGLE, CAST_AURA_NOT_PRESENT) == CAST_OK)
+                if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_MANGLE, CF_AURA_NOT_PRESENT) == CAST_OK)
                     m_uiMangleTimer = urand(8000, 10000);
             }
             else
@@ -2154,7 +2152,7 @@ struct boss_alzzin_the_wildshaperAI : ScriptedAI
             {
                 if (m_creature->GetHealthPercent() < 50.0f)
                 {
-                    if (DoCastSpellIfCan(m_creature, SPELL_WILD_REGENERATION, CAST_AURA_NOT_PRESENT) == CAST_OK)
+                    if (DoCastSpellIfCan(m_creature, SPELL_WILD_REGENERATION, CF_AURA_NOT_PRESENT) == CAST_OK)
                         m_uiWildRegenerationTimer = urand(10000, 15000);
                 }
             }
@@ -2336,7 +2334,7 @@ struct boss_magister_kalendrisAI:public ScriptedAI
         // Shadow Word Pain
         if (m_uiShadowWordPainTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_SHADOW_WORD_PAIN, CAST_AURA_NOT_PRESENT) == CAST_OK)
+            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_SHADOW_WORD_PAIN, CF_AURA_NOT_PRESENT) == CAST_OK)
                 m_uiShadowWordPainTimer = urand(9000, 11000);
         }
         else

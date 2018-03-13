@@ -278,7 +278,7 @@ void Opcodes::BuildOpcodeList()
     /*0x0DE*/  StoreOpcode(SMSG_MOVE_WATER_WALK,              "SMSG_MOVE_WATER_WALK",             STATUS_NEVER,     PACKET_PROCESS_MAX_TYPE,      &WorldSession::Handle_ServerSide);
     /*0x0DF*/  StoreOpcode(SMSG_MOVE_LAND_WALK,               "SMSG_MOVE_LAND_WALK",              STATUS_NEVER,     PACKET_PROCESS_MAX_TYPE,      &WorldSession::Handle_ServerSide);
     /*0x0E0*/  StoreOpcode(MSG_MOVE_SET_RAW_POSITION_ACK,     "MSG_MOVE_SET_RAW_POSITION_ACK",    STATUS_NEVER,     PACKET_PROCESS_MAX_TYPE,      &WorldSession::Handle_NULL);
-    /*0x0E1*/  StoreOpcode(CMSG_MOVE_SET_RAW_POSITION,        "CMSG_MOVE_SET_RAW_POSITION",       STATUS_NEVER,     PACKET_PROCESS_MAX_TYPE,      &WorldSession::Handle_NULL);
+    /*0x0E1*/  StoreOpcode(CMSG_MOVE_SET_RAW_POSITION,        "CMSG_MOVE_SET_RAW_POSITION",       STATUS_LOGGEDIN,  PACKET_PROCESS_MAP,           &WorldSession::HandleMoveSetRawPosition);
     /*0x0E2*/  StoreOpcode(SMSG_FORCE_RUN_SPEED_CHANGE,       "SMSG_FORCE_RUN_SPEED_CHANGE",      STATUS_NEVER,     PACKET_PROCESS_MAX_TYPE,      &WorldSession::Handle_ServerSide);
     /*0x0E3*/  StoreOpcode(CMSG_FORCE_RUN_SPEED_CHANGE_ACK,   "CMSG_FORCE_RUN_SPEED_CHANGE_ACK",  STATUS_LOGGEDIN,  PACKET_PROCESS_MOVEMENT,      &WorldSession::HandleForceSpeedChangeAckOpcodes);
     /*0x0E4*/  StoreOpcode(SMSG_FORCE_RUN_BACK_SPEED_CHANGE,  "SMSG_FORCE_RUN_BACK_SPEED_CHANGE", STATUS_NEVER,     PACKET_PROCESS_MAX_TYPE,      &WorldSession::Handle_ServerSide);
@@ -357,7 +357,7 @@ void Opcodes::BuildOpcodeList()
     /*0x12D*/  StoreOpcode(CMSG_NEW_SPELL_SLOT,               "CMSG_NEW_SPELL_SLOT",              STATUS_NEVER,     PACKET_PROCESS_MAX_TYPE,      &WorldSession::Handle_NULL);
     /*0x12E*/  StoreOpcode(CMSG_CAST_SPELL,                   "CMSG_CAST_SPELL",                  STATUS_LOGGEDIN,  PACKET_PROCESS_SPELLS,   &WorldSession::HandleCastSpellOpcode);
     /*0x12F*/  StoreOpcode(CMSG_CANCEL_CAST,                  "CMSG_CANCEL_CAST",                 STATUS_LOGGEDIN,  PACKET_PROCESS_SPELLS,   &WorldSession::HandleCancelCastOpcode);
-    /*0x130*/  StoreOpcode(SMSG_CAST_FAILED,                  "SMSG_CAST_FAILED",                 STATUS_NEVER,     PACKET_PROCESS_MAX_TYPE,      &WorldSession::Handle_ServerSide);
+    /*0x130*/  StoreOpcode(SMSG_CAST_RESULT,                  "SMSG_CAST_RESULT",                 STATUS_NEVER,     PACKET_PROCESS_MAX_TYPE,      &WorldSession::Handle_ServerSide);
     /*0x131*/  StoreOpcode(SMSG_SPELL_START,                  "SMSG_SPELL_START",                 STATUS_NEVER,     PACKET_PROCESS_MAX_TYPE,      &WorldSession::Handle_ServerSide);
     /*0x132*/  StoreOpcode(SMSG_SPELL_GO,                     "SMSG_SPELL_GO",                    STATUS_NEVER,     PACKET_PROCESS_MAX_TYPE,      &WorldSession::Handle_ServerSide);
     /*0x133*/  StoreOpcode(SMSG_SPELL_FAILURE,                "SMSG_SPELL_FAILURE",               STATUS_NEVER,     PACKET_PROCESS_MAX_TYPE,      &WorldSession::Handle_ServerSide);
@@ -653,7 +653,7 @@ void Opcodes::BuildOpcodeList()
     /*0x256*/  StoreOpcode(CMSG_AUCTION_SELL_ITEM,            "CMSG_AUCTION_SELL_ITEM",           STATUS_LOGGEDIN,  PACKET_PROCESS_WORLD,         &WorldSession::HandleAuctionSellItem);
     /*0x257*/  StoreOpcode(CMSG_AUCTION_REMOVE_ITEM,          "CMSG_AUCTION_REMOVE_ITEM",         STATUS_LOGGEDIN,  PACKET_PROCESS_WORLD,         &WorldSession::HandleAuctionRemoveItem);
     /*0x258*/  StoreOpcode(CMSG_AUCTION_LIST_ITEMS,           "CMSG_AUCTION_LIST_ITEMS",          STATUS_LOGGEDIN,  PACKET_PROCESS_WORLD,         &WorldSession::HandleAuctionListItems);
-    /*0x259*/  StoreOpcode(CMSG_AUCTION_LIST_OWNER_ITEMS,     "CMSG_AUCTION_LIST_OWNER_ITEMS",    STATUS_LOGGEDIN,  PACKET_PROCESS_MAP,           &WorldSession::HandleAuctionListOwnerItems);
+    /*0x259*/  StoreOpcode(CMSG_AUCTION_LIST_OWNER_ITEMS,     "CMSG_AUCTION_LIST_OWNER_ITEMS",    STATUS_LOGGEDIN,  PACKET_PROCESS_WORLD,         &WorldSession::HandleAuctionListOwnerItems);
     /*0x25A*/  StoreOpcode(CMSG_AUCTION_PLACE_BID,            "CMSG_AUCTION_PLACE_BID",           STATUS_LOGGEDIN,  PACKET_PROCESS_WORLD,         &WorldSession::HandleAuctionPlaceBid);
     /*0x25B*/  StoreOpcode(SMSG_AUCTION_COMMAND_RESULT,       "SMSG_AUCTION_COMMAND_RESULT",      STATUS_NEVER,     PACKET_PROCESS_MAX_TYPE,      &WorldSession::Handle_ServerSide);
     /*0x25C*/  StoreOpcode(SMSG_AUCTION_LIST_RESULT,          "SMSG_AUCTION_LIST_RESULT",         STATUS_NEVER,     PACKET_PROCESS_MAX_TYPE,      &WorldSession::Handle_ServerSide);
@@ -664,7 +664,7 @@ void Opcodes::BuildOpcodeList()
     /*0x261*/  StoreOpcode(SMSG_STANDSTATE_CHANGE_FAILURE_OBSOLETE, "SMSG_STANDSTATE_CHANGE_FAILURE_OBSOLETE", STATUS_NEVER,     PACKET_PROCESS_MAX_TYPE,      &WorldSession::Handle_ServerSide);
     /*0x262*/  StoreOpcode(SMSG_DISPEL_FAILED,                "SMSG_DISPEL_FAILED",               STATUS_NEVER,     PACKET_PROCESS_MAX_TYPE,      &WorldSession::Handle_ServerSide);
     /*0x263*/  StoreOpcode(SMSG_SPELLORDAMAGE_IMMUNE,         "SMSG_SPELLORDAMAGE_IMMUNE",        STATUS_NEVER,     PACKET_PROCESS_MAX_TYPE,      &WorldSession::Handle_ServerSide);
-    /*0x264*/  StoreOpcode(CMSG_AUCTION_LIST_BIDDER_ITEMS,    "CMSG_AUCTION_LIST_BIDDER_ITEMS",   STATUS_LOGGEDIN,  PACKET_PROCESS_MAP,           &WorldSession::HandleAuctionListBidderItems);
+    /*0x264*/  StoreOpcode(CMSG_AUCTION_LIST_BIDDER_ITEMS,    "CMSG_AUCTION_LIST_BIDDER_ITEMS",   STATUS_LOGGEDIN,  PACKET_PROCESS_WORLD,         &WorldSession::HandleAuctionListBidderItems);
     /*0x265*/  StoreOpcode(SMSG_AUCTION_BIDDER_LIST_RESULT,   "SMSG_AUCTION_BIDDER_LIST_RESULT",  STATUS_NEVER,     PACKET_PROCESS_MAX_TYPE,      &WorldSession::Handle_ServerSide);
     /*0x266*/  StoreOpcode(SMSG_SET_FLAT_SPELL_MODIFIER,      "SMSG_SET_FLAT_SPELL_MODIFIER",     STATUS_NEVER,     PACKET_PROCESS_MAX_TYPE,      &WorldSession::Handle_ServerSide);
     /*0x267*/  StoreOpcode(SMSG_SET_PCT_SPELL_MODIFIER,       "SMSG_SET_PCT_SPELL_MODIFIER",      STATUS_NEVER,     PACKET_PROCESS_MAX_TYPE,      &WorldSession::Handle_ServerSide);
@@ -711,7 +711,7 @@ void Opcodes::BuildOpcodeList()
     /*0x290*/  StoreOpcode(CMSG_BUYBACK_ITEM,                 "CMSG_BUYBACK_ITEM",                STATUS_LOGGEDIN,  PACKET_PROCESS_SELF_ITEMS,    &WorldSession::HandleBuybackItem);
     /*0x291*/  StoreOpcode(SMSG_SERVER_MESSAGE,               "SMSG_SERVER_MESSAGE",              STATUS_NEVER,     PACKET_PROCESS_MAX_TYPE,      &WorldSession::Handle_ServerSide);
     /*0x292*/  StoreOpcode(CMSG_MEETINGSTONE_JOIN,            "CMSG_MEETINGSTONE_JOIN",           STATUS_LOGGEDIN,  PACKET_PROCESS_WORLD,         &WorldSession::HandleMeetingStoneJoinOpcode);
-    /*0x293*/  StoreOpcode(CMSG_MEETINGSTONE_LEAVE,           "CMSG_MEETINGSTONE_LEAVE",          STATUS_NEVER,     PACKET_PROCESS_MAX_TYPE,      &WorldSession::Handle_NULL);
+    /*0x293*/  StoreOpcode(CMSG_MEETINGSTONE_LEAVE,           "CMSG_MEETINGSTONE_LEAVE",          STATUS_LOGGEDIN,  PACKET_PROCESS_WORLD,         &WorldSession::HandleMeetingStoneLeaveOpcode);
     /*0x294*/  StoreOpcode(CMSG_MEETINGSTONE_CHEAT,           "CMSG_MEETINGSTONE_CHEAT",          STATUS_NEVER,     PACKET_PROCESS_MAX_TYPE,      &WorldSession::Handle_NULL);
     /*0x295*/  StoreOpcode(SMSG_MEETINGSTONE_SETQUEUE,        "SMSG_MEETINGSTONE_SETQUEUE",       STATUS_NEVER,     PACKET_PROCESS_MAX_TYPE,      &WorldSession::Handle_ServerSide);
     /*0x296*/  StoreOpcode(CMSG_MEETINGSTONE_INFO,            "CMSG_MEETINGSTONE_INFO",           STATUS_LOGGEDIN,  PACKET_PROCESS_WORLD,         &WorldSession::HandleMeetingStoneInfoOpcode);

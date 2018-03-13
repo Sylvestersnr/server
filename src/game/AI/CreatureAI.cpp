@@ -24,6 +24,7 @@
 #include "DBCStores.h"
 #include "Spell.h"
 #include "Totem.h"
+#include "GridSearchers.h"
 
 CreatureAI::~CreatureAI()
 {
@@ -60,6 +61,14 @@ CanCastResult CreatureAI::CanCastSpell(Unit* pTarget, const SpellEntry *pSpell, 
     if (pSpell->Custom & SPELL_CUSTOM_FROM_BEHIND && pTarget->HasInArc(M_PI_F, m_creature))
         return CAST_FAIL_OTHER;
 
+    // If the spell requires the target having a specific power type
+    if (!IsAreaOfEffectSpell(pSpell) && !IsTargetPowerTypeValid(pSpell, pTarget->getPowerType()))
+        return CAST_FAIL_OTHER;
+
+    // Mind control abilities can't be used with just 1 attacker or mob will reset.
+    if ((m_creature->getThreatManager().getThreatList().size() == 1) && IsCharmSpell(pSpell))
+        return CAST_FAIL_OTHER;
+
     // If the unit is disarmed and the skill requires a weapon, it cannot be cast
     if (m_creature->HasWeapon() && !m_creature->CanUseEquippedWeapon(BASE_ATTACK))
     {
@@ -72,6 +81,9 @@ CanCastResult CreatureAI::CanCastSpell(Unit* pTarget, const SpellEntry *pSpell, 
 
     if (pSpell->rangeIndex == SPELL_RANGE_IDX_SELF_ONLY)
         return CAST_OK;
+
+    if (!(pSpell->AttributesEx2 & SPELL_ATTR_EX2_IGNORE_LOS) && !m_creature->IsWithinLOSInMap(pTarget))
+        return CAST_FAIL_NOT_IN_LOS;
 
     if (const SpellRangeEntry *pSpellRange = sSpellRangeStore.LookupEntry(pSpell->rangeIndex))
     {
@@ -102,35 +114,38 @@ CanCastResult CreatureAI::DoCastSpellIfCan(Unit* pTarget, uint32 uiSpell, uint32
 
     Unit* pCaster = m_creature;
 
-    if (uiCastFlags & CAST_FORCE_TARGET_SELF)
+    if (uiCastFlags & CF_TARGET_CASTS_ON_SELF)
         pCaster = pTarget;
 
     // Allowed to cast only if not casting (unless we interrupt ourself) or if spell is triggered
-    if (!pCaster->IsNonMeleeSpellCasted(false) || uiCastFlags & (CAST_TRIGGERED | CAST_INTERRUPT_PREVIOUS))
+    if (!pCaster->IsNonMeleeSpellCasted(false) || uiCastFlags & (CF_TRIGGERED | CF_INTERRUPT_PREVIOUS))
     {
         if (const SpellEntry* pSpell = sSpellMgr.GetSpellEntry(uiSpell))
         {
-            // If cast flag CAST_AURA_NOT_PRESENT is active, check if target already has aura on them
-            if (uiCastFlags & CAST_AURA_NOT_PRESENT)
+            // If cast flag CF_AURA_NOT_PRESENT is active, check if target already has aura on them
+            if (uiCastFlags & CF_AURA_NOT_PRESENT)
             {
                 if (pTarget->HasAura(uiSpell))
                     return CAST_FAIL_TARGET_AURA;
             }
 
             // Check if cannot cast spell
-            if (!(uiCastFlags & (CAST_FORCE_TARGET_SELF | CAST_FORCE_CAST)))
+            if (!(uiCastFlags & (CF_TARGET_CASTS_ON_SELF | CF_FORCE_CAST)))
             {
-                CanCastResult castResult = CanCastSpell(pTarget, pSpell, uiCastFlags & CAST_TRIGGERED);
+                CanCastResult castResult = CanCastSpell(pTarget, pSpell, uiCastFlags & CF_TRIGGERED);
 
                 if (castResult != CAST_OK)
                     return castResult;
             }
 
             // Interrupt any previous spell
-            if ((uiCastFlags & CAST_INTERRUPT_PREVIOUS) && pCaster->IsNonMeleeSpellCasted(false))
+            if ((uiCastFlags & CF_INTERRUPT_PREVIOUS) && pCaster->IsNonMeleeSpellCasted(false))
                 pCaster->InterruptNonMeleeSpells(false);
 
-            pCaster->CastSpell(pTarget, pSpell, uiCastFlags & CAST_TRIGGERED, nullptr, nullptr, uiOriginalCasterGUID);
+            if ((uiCastFlags & CF_MAIN_RANGED_SPELL) && pCaster->IsMoving())
+                pCaster->StopMoving();
+
+            pCaster->CastSpell(pTarget, pSpell, uiCastFlags & CF_TRIGGERED, nullptr, nullptr, uiOriginalCasterGUID);
             return CAST_OK;
         }
 
@@ -139,6 +154,71 @@ CanCastResult CreatureAI::DoCastSpellIfCan(Unit* pTarget, uint32 uiSpell, uint32
     }
 
     return CAST_FAIL_IS_CASTING;
+}
+
+void CreatureAI::SetSpellsTemplate(uint32 entry)
+{
+    if (entry == 0)
+        m_CreatureSpells.clear();
+    else if (const CreatureSpellsTemplate* pSpellsTemplate = sObjectMgr.GetCreatureSpellsTemplate(entry))
+        SetSpellsTemplate(pSpellsTemplate);
+    else
+        sLog.outError("CreatureAI: Attempt to set spells template of creature %u to non-existent entry %u.", m_creature->GetEntry(), entry);
+}
+
+void CreatureAI::SetSpellsTemplate(const CreatureSpellsTemplate *SpellsTemplate)
+{
+    m_CreatureSpells.clear();
+    for (const auto & entry : *SpellsTemplate)
+    {
+        m_CreatureSpells.push_back(CreatureAISpellsEntry(entry));
+    }
+    m_CreatureSpells.shrink_to_fit();
+}
+
+void CreatureAI::DoSpellTemplateCasts(const uint32 uiDiff)
+{
+    for (auto & spell : m_CreatureSpells)
+    {
+        if (spell.cooldown <= uiDiff)
+        {
+            // we roll to see if we cast this time
+            if (spell.probability <= rand() % 100)
+            {
+                spell.cooldown = urand(spell.delayRepeatMin, spell.delayRepeatMax);
+                continue;
+            }
+
+            Unit* spellTarget = ToUnit(GetTargetByType(m_creature, m_creature, spell.castTarget, spell.spellId));
+
+            CanCastResult result = DoCastSpellIfCan(spellTarget, spell.spellId, spell.castFlags);
+            
+            if (result == CAST_OK)
+            {
+                spell.cooldown = urand(spell.delayRepeatMin, spell.delayRepeatMax);
+
+                if (spell.castFlags & CF_MAIN_RANGED_SPELL)
+                {
+                    SetCombatMovement(false);
+                    SetMeleeAttack(false);
+                }
+
+                // If there is a script for this spell, run it.
+                if (spell.scriptId)
+                    m_creature->GetMap()->ScriptsStart(sCreatureSpellScripts, spell.scriptId, m_creature, spellTarget);
+            }
+            else if (result != CAST_FAIL_IS_CASTING)
+            {
+                if (spell.castFlags & CF_MAIN_RANGED_SPELL)
+                {
+                    SetCombatMovement(true);
+                    SetMeleeAttack(true);
+                }
+            }
+        }
+        else
+            spell.cooldown -= uiDiff;
+    }
 }
 
 void CreatureAI::ClearTargetIcon()
@@ -192,28 +272,6 @@ bool CreatureAI::UpdateVictimWithGaze()
     return m_creature->getVictim();
 }
 
-bool CreatureAI::UpdateCombatState()
-{
-    if (!m_creature->isInCombat())
-        return false;
-
-    if (!m_creature->HasReactState(REACT_PASSIVE))
-    {
-        if (m_creature->SelectHostileTarget())
-            if (Unit *victim = m_creature->getVictim())
-                AttackStart(victim);
-        return m_creature->getVictim();
-    }
-
-    if (m_creature->getThreatManager().isThreatListEmpty())
-    {
-        EnterEvadeMode();
-        return false;
-    }
-
-    return true;
-}
-
 bool CreatureAI::UpdateVictim()
 {
     if (!m_creature->isInCombat())
@@ -260,7 +318,7 @@ void CreatureAI::DoCastAOE(uint32 spellId, bool triggered)
 
 bool CreatureAI::DoMeleeAttackIfReady()
 {
-    return m_creature->UpdateMeleeAttackingState();
+    return m_MeleeEnabled ? m_creature->UpdateMeleeAttackingState() : false;
 }
 
 struct EnterEvadeModeHelper
@@ -282,8 +340,40 @@ struct EnterEvadeModeHelper
     Unit* source;
 };
 
+void CreatureAI::SetMeleeAttack(bool enabled)
+{
+    if (m_MeleeEnabled == enabled)
+        return;
+
+    m_MeleeEnabled = enabled;
+
+    if (enabled)
+        m_creature->SendMeleeAttackStart(m_creature->getVictim());
+    else
+        m_creature->SendMeleeAttackStop(m_creature->getVictim());
+}
+
+void CreatureAI::SetCombatMovement(bool enabled)
+{
+    if (m_CombatMovementEnabled == enabled)
+        return;
+
+    m_CombatMovementEnabled = enabled;
+
+    if (Unit* pVictim = m_creature->getVictim())
+    {
+        if (!enabled && (m_creature->GetMotionMaster()->GetCurrentMovementGeneratorType() == CHASE_MOTION_TYPE))
+            m_creature->GetMotionMaster()->MoveIdle();
+        else if (enabled && (m_creature->GetMotionMaster()->GetCurrentMovementGeneratorType() == IDLE_MOTION_TYPE))
+            m_creature->GetMotionMaster()->MoveChase(pVictim);
+    }
+}
+
 void CreatureAI::EnterEvadeMode()
 {
+    // Reset back to default spells template. This also resets timers.
+    SetSpellsTemplate(m_creature->GetCreatureInfo()->spells_template);
+
     if (!m_creature->isAlive())
     {
         DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "Creature stopped attacking, he is dead [guid=%u]", m_creature->GetGUIDLow());

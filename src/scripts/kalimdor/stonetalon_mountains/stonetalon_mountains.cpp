@@ -17,52 +17,11 @@
 /* ScriptData
 SDName: Stonetalon_Mountains
 SD%Complete: 95
-SDComment: Quest support: 6627 (Braug Dimspirits questions/'answers' might have more to it, need more info), 6523, 1090
+SDComment: Quest support: 6523, 1090
 SDCategory: Stonetalon Mountains
 EndScriptData */
 
 #include "scriptPCH.h"
-
-/*######
-## npc_braug_dimspirit
-######*/
-
-bool GossipHello_npc_braug_dimspirit(Player* pPlayer, Creature* pCreature)
-{
-    if (pCreature->isQuestGiver())
-        pPlayer->PrepareQuestMenu(pCreature->GetGUID());
-
-    if (pPlayer->GetQuestStatus(6627) == QUEST_STATUS_INCOMPLETE)
-    {
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Ysera", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Neltharion", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Nozdormu", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Alexstrasza", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Malygos", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
-
-        pPlayer->SEND_GOSSIP_MENU(5820, pCreature->GetGUID());
-    }
-    else
-        pPlayer->SEND_GOSSIP_MENU(5819, pCreature->GetGUID());
-
-    return true;
-}
-
-bool GossipSelect_npc_braug_dimspirit(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
-{
-    if (uiAction == GOSSIP_ACTION_INFO_DEF + 1)
-    {
-        pPlayer->CLOSE_GOSSIP_MENU();
-        pCreature->CastSpell(pPlayer, 6766, false);
-
-    }
-    if (uiAction == GOSSIP_ACTION_INFO_DEF + 2)
-    {
-        pPlayer->CLOSE_GOSSIP_MENU();
-        pPlayer->AreaExploredOrEventHappens(6627);
-    }
-    return true;
-}
 
 /*######
 ## npc_kaya
@@ -207,25 +166,25 @@ struct npc_piznikAI : public ScriptedAI
         {
             if (EventPhase == EVENT_PHASE_INIT)
             {
-                m_creature->SummonCreature(3998, 935.6930f, -262.0789f, -2.1552f, 0.5f, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 60000);
-                m_creature->SummonCreature(4001, 931.6735f, -261.3967f, -2.0203f, 6.5f, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 60000);
+                m_creature->SummonCreature(3998, 935.6930f, -262.0789f, -2.1552f, 0.5f, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 120000);
+                m_creature->SummonCreature(4001, 931.6735f, -261.3967f, -2.0203f, 6.5f, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 120000);
                 EventPhase = EVENT_PHASE_SECOND_WAVE;
             }
-            if (EventTimer > 5000 && EventPhase == EVENT_PHASE_SECOND_WAVE)
+            if (EventTimer > 60000 && EventPhase == EVENT_PHASE_SECOND_WAVE)
             {
-                m_creature->SummonCreature(3998, 935.6930f, -262.0789f, -2.1552f, 0.5f, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 60000);
-                m_creature->SummonCreature(4001, 931.6735f, -261.3967f, -2.0203f, 6.5f, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 60000);
-                m_creature->SummonCreature(3998, 930.4216f, -266.4603f, -1.6689f, 0.5f, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 60000);
+                m_creature->SummonCreature(3998, 935.6930f, -262.0789f, -2.1552f, 0.5f, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 120000);
+                m_creature->SummonCreature(4001, 931.6735f, -261.3967f, -2.0203f, 6.5f, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 120000);
+                m_creature->SummonCreature(3998, 930.4216f, -266.4603f, -1.6689f, 0.5f, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 120000);
                 EventPhase = EVENT_PHASE_THIRD_WAVE;
             }
-            if (EventTimer > 10000 && EventPhase == EVENT_PHASE_THIRD_WAVE)
+            if (EventTimer > 120000 && EventPhase == EVENT_PHASE_THIRD_WAVE)
             {
-                m_creature->SummonCreature(3998, 935.6930f, -262.0789f, -2.1552f, 0.5f, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 60000);
-                m_creature->SummonCreature(4001, 931.6735f, -261.3967f, -2.0203f, 6.5f, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 60000);
-                m_creature->SummonCreature(4003, 930.4216f, -266.4603f, -1.6689f, 0.5f, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 60000);
+                m_creature->SummonCreature(3998, 935.6930f, -262.0789f, -2.1552f, 0.5f, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 120000);
+                m_creature->SummonCreature(4001, 931.6735f, -261.3967f, -2.0203f, 6.5f, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 120000);
+                m_creature->SummonCreature(4003, 930.4216f, -266.4603f, -1.6689f, 0.5f, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 120000);
                 EventPhase = EVENT_PHASE_END;
             }
-            if (EventTimer > 20000 && EventPhase == EVENT_PHASE_END)
+            if (EventTimer > 180000 && EventPhase == EVENT_PHASE_END)
             {
                 if (Player *pPlayer = m_creature->GetMap()->GetPlayer(pGuid))
                     pPlayer->GroupEventHappens(QUEST_GERENOS_ORDERS, m_creature);
@@ -265,12 +224,6 @@ bool QuestAccept_npc_piznik(Player *pPlayer, Creature *pCreature, const Quest *p
 void AddSC_stonetalon_mountains()
 {
     Script *newscript;
-
-    newscript = new Script;
-    newscript->Name = "npc_braug_dimspirit";
-    newscript->pGossipHello = &GossipHello_npc_braug_dimspirit;
-    newscript->pGossipSelect = &GossipSelect_npc_braug_dimspirit;
-    newscript->RegisterSelf();
 
     newscript = new Script;
     newscript->Name = "npc_kaya";

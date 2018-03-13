@@ -57,7 +57,7 @@ bool ChatHandler::HandleDebugSendSpellFailCommand(char* args)
     char* unk = strtok(NULL, " ");
     uint8 unkI = unk ? (uint8)atoi(unk) : 2;
 
-    WorldPacket data(SMSG_CAST_FAILED, 4 + 1 + 1);
+    WorldPacket data(SMSG_CAST_RESULT, 4 + 1 + 1);
     data << uint32(133);
     data << uint8(unkI);
     data << uint8(failnum);
@@ -89,7 +89,7 @@ bool ChatHandler::HandleDebugSendNextChannelSpellVisualCommand(char *args)
     }
     uint32 id = 0;
     SpellEntry const *spellInfo = NULL;
-    for (id = uiPlayId + 1; id <= sSpellStore.GetNumRows(); id++)
+    for (id = uiPlayId + 1; id <= sSpellMgr.GetMaxSpellId(); id++)
     {
         spellInfo = sSpellMgr.GetSpellEntry(id);
         if (!spellInfo || uiPlayId >= spellInfo->Id || !spellInfo->SpellVisual || !IsChanneledSpell(spellInfo))
@@ -97,7 +97,7 @@ bool ChatHandler::HandleDebugSendNextChannelSpellVisualCommand(char *args)
         else
             break;
     }
-    if (id && id <= sSpellStore.GetNumRows())
+    if (id && id <= sSpellMgr.GetMaxSpellId())
     {
         WorldPacket data(MSG_CHANNEL_START, (4 + 4));
         data << uint32(id);
@@ -107,7 +107,7 @@ bool ChatHandler::HandleDebugSendNextChannelSpellVisualCommand(char *args)
         PSendSysMessage("Playing channel visual of spell %u %s %s", id, spellInfo->SpellName[0], spellInfo->Rank[0]);
         return true;
     }
-    PSendSysMessage("Spell Id range 0 to %u, -1 to stop animation", sSpellStore.GetNumRows());
+    PSendSysMessage("Spell Id range 0 to %u, -1 to stop animation", sSpellMgr.GetMaxSpellId());
     return true;
 }
 
@@ -118,7 +118,7 @@ bool ChatHandler::HandleSendSpellChannelVisualCommand(char *args)
     if (playIdStr)
         uiPlayId = int32(atoi(playIdStr));
 
-    if (uiPlayId && uiPlayId <= sSpellStore.GetNumRows())
+    if (uiPlayId && uiPlayId <= sSpellMgr.GetMaxSpellId())
     {
         WorldPacket data(MSG_CHANNEL_START, (4 + 4));
         data << uint32(uiPlayId);
@@ -138,7 +138,7 @@ bool ChatHandler::HandleSendSpellChannelVisualCommand(char *args)
         PSendSysMessage("Sending channel stop");
         return true;
     }
-    PSendSysMessage("Spell Id range 1 to %u, 0 to stop animation", sSpellStore.GetNumRows());
+    PSendSysMessage("Spell Id range 1 to %u, 0 to stop animation", sSpellMgr.GetMaxSpellId());
     return true;
 }
 
@@ -192,6 +192,20 @@ bool ChatHandler::HandleDebugSendBuyErrorCommand(char* args)
 
     uint8 msg = atoi(args);
     m_session->GetPlayer()->SendBuyError(BuyResult(msg), 0, 0, 0);
+    return true;
+}
+
+bool ChatHandler::HandleDebugSendOpenBagCommand(char *args)
+{
+    Player *pTarget = getSelectedPlayer();
+    if (!pTarget)
+    {
+        SendSysMessage(LANG_PLAYER_NOT_FOUND);
+        SetSentErrorMessage(true);
+        return false;
+    }
+
+    pTarget->SendOpenContainer();
     return true;
 }
 
@@ -309,10 +323,15 @@ bool ChatHandler::HandleDebugPlaySoundCommand(char* args)
     // USAGE: .debug playsound #soundid
     // #soundid - ID decimal number from SoundEntries.dbc (1st column)
     uint32 dwSoundId;
-    if (!ExtractUInt32(&args, dwSoundId))
-        return false;
 
-    if (!sSoundEntriesStore.LookupEntry(dwSoundId))
+    if (!ExtractUint32KeyFromLink(&args, "Hsound", dwSoundId))
+    {
+        PSendSysMessage(LANG_SOUND_NOT_EXIST, dwSoundId);
+        SetSentErrorMessage(true);
+        return false;
+    }
+
+    if (!sObjectMgr.GetSoundEntry(dwSoundId))
     {
         PSendSysMessage(LANG_SOUND_NOT_EXIST, dwSoundId);
         SetSentErrorMessage(true);
@@ -340,10 +359,14 @@ bool ChatHandler::HandleDebugPlayMusicCommand(char* args)
 {
     uint32 dwSoundId;
 
-    if (!ExtractUInt32(&args, dwSoundId))
+    if (!ExtractUint32KeyFromLink(&args, "Hsound", dwSoundId))
+    {
+        PSendSysMessage(LANG_SOUND_NOT_EXIST, dwSoundId);
+        SetSentErrorMessage(true);
         return false;
+    }
 
-    if (!sSoundEntriesStore.LookupEntry(dwSoundId))
+    if (!sObjectMgr.GetSoundEntry(dwSoundId))
     {
         PSendSysMessage(LANG_SOUND_NOT_EXIST, dwSoundId);
         SetSentErrorMessage(true);
@@ -351,7 +374,7 @@ bool ChatHandler::HandleDebugPlayMusicCommand(char* args)
     }
 
     Player* target;
-   
+
     if (!ExtractPlayerTarget(&args, &target, nullptr, nullptr))
         return false;
 
@@ -367,6 +390,43 @@ bool ChatHandler::HandleDebugPlayMusicCommand(char* args)
     target->SendDirectMessage(&data);
 
     PSendSysMessage(LANG_YOU_HEAR_SOUND, dwSoundId);
+    return true;
+}
+
+bool ChatHandler::HandleDebugPlayScriptText(char* args)
+{
+    int32 textId;
+
+    if (!ExtractInt32(&args, textId))
+        return false;
+
+    Unit* pSource = getSelectedUnit();
+    Unit* pTarget = m_session->GetPlayer();
+
+    if (pSource && pTarget)
+        DoScriptText(textId, pSource, pTarget);
+
+    return true;
+}
+
+bool ChatHandler::HandleDebugConditionCommand(char* args)
+{
+    int32 conditionId;
+
+    if (!ExtractInt32(&args, conditionId))
+        return false;
+
+    Unit* pSource = getSelectedUnit();
+    Unit* pTarget = m_session->GetPlayer();
+
+    if (pSource && pTarget)
+    {
+        if (sObjectMgr.IsConditionSatisfied(conditionId, pTarget, pSource->GetMap(), pSource, CONDITION_FROM_DBSCRIPTS))
+            SendSysMessage("Condition is satisfied.");
+        else
+            SendSysMessage("Condition is not satisfied.");
+    }
+
     return true;
 }
 
@@ -408,8 +468,10 @@ bool ChatHandler::HandleDebugSendQuestPartyMsgCommand(char* args)
     uint32 msg;
     if (!ExtractUInt32(&args, msg))
         return false;
+    if (msg > 0xFF)
+        return false;
 
-    m_session->GetPlayer()->SendPushToPartyResponse(m_session->GetPlayer(), msg);
+    m_session->GetPlayer()->SendPushToPartyResponse(m_session->GetPlayer(), uint8(msg));
     return true;
 }
 

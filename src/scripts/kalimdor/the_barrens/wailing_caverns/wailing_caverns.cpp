@@ -567,7 +567,7 @@ struct npc_disciple_of_naralexAI : public npc_escortAI
 
         if (Potion_Timer < diff)
         {
-            if ((m_creature->GetHealth() / m_creature->GetMaxHealth()) < 0.8)
+            if ((static_cast<double>(m_creature->GetHealth()) / m_creature->GetMaxHealth()) < 0.8)
                 m_creature->CastSpell(m_creature, SPELL_POTION, false);
             Potion_Timer = 45000;
         }
@@ -667,28 +667,28 @@ struct EvolvingEctoplasmAI : public ScriptedAI
             if (pSpell->School == SPELL_SCHOOL_FROST)
             {
 //                m_creature->SetDisplayId(1751);
-                DoCastSpellIfCan(m_creature, SPELL_IMMUNE_FROST, CAST_AURA_NOT_PRESENT);
+                DoCastSpellIfCan(m_creature, SPELL_IMMUNE_FROST, CF_AURA_NOT_PRESENT);
                 m_uiImmuneTimer = 10000;
                 isImmune = true;
             }
             else if (pSpell->School == SPELL_SCHOOL_FIRE)
             {
 //                m_creature->SetDisplayId(11138);
-                DoCastSpellIfCan(m_creature, SPELL_IMMUNE_FIRE, CAST_AURA_NOT_PRESENT);
+                DoCastSpellIfCan(m_creature, SPELL_IMMUNE_FIRE, CF_AURA_NOT_PRESENT);
                 m_uiImmuneTimer = 10000;
                 isImmune = true;
             }
             else if (pSpell->School == SPELL_SCHOOL_NATURE)
             {
 //                m_creature->SetDisplayId(4266);
-                DoCastSpellIfCan(m_creature, SPELL_IMMUNE_NATURE, CAST_AURA_NOT_PRESENT);
+                DoCastSpellIfCan(m_creature, SPELL_IMMUNE_NATURE, CF_AURA_NOT_PRESENT);
                 m_uiImmuneTimer = 10000;
                 isImmune = true;
             }
             else if (pSpell->School == SPELL_SCHOOL_SHADOW)
             {
 //                m_creature->SetDisplayId(767);
-                DoCastSpellIfCan(m_creature, SPELL_IMMUNE_SHADOW, CAST_AURA_NOT_PRESENT);
+                DoCastSpellIfCan(m_creature, SPELL_IMMUNE_SHADOW, CF_AURA_NOT_PRESENT);
                 m_uiImmuneTimer = 10000;
                 isImmune = true;
             }

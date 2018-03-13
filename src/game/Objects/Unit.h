@@ -341,6 +341,7 @@ enum UnitMods
     UNIT_MOD_DAMAGE_MAINHAND,
     UNIT_MOD_DAMAGE_OFFHAND,
     UNIT_MOD_DAMAGE_RANGED,
+    UNIT_MOD_DAMAGE_PHYSICAL,
     UNIT_MOD_END,
     // synonyms
     UNIT_MOD_STAT_START = UNIT_MOD_STAT_STRENGTH,
@@ -419,6 +420,8 @@ enum UnitState
     UNIT_STAT_RUNNING            = 0x02000000,
     UNIT_STAT_IGNORE_MOVE_LOS    = 0x04000000,
 
+    UNIT_STAT_ALLOW_INCOMPLETE_PATH = 0x08000000, // allow movement with incomplete or partial paths
+    UNIT_STAT_ALLOW_LOS_ATTACK      = 0x10000000, // allow melee attacks without LoS
     // masks (only for check)
 
     // can't move currently
@@ -531,7 +534,7 @@ enum NPCFlags
 {
     UNIT_NPC_FLAG_NONE                  = 0x00000000,
     UNIT_NPC_FLAG_GOSSIP                = 0x00000001,       // 100%
-    UNIT_NPC_FLAG_QUESTGIVER            = 0x00000002,       // guessed, probably ok
+    UNIT_NPC_FLAG_QUESTGIVER            = 0x00000002,       // 100%
     UNIT_NPC_FLAG_VENDOR                = 0x00000004,       // 100%
     UNIT_NPC_FLAG_FLIGHTMASTER          = 0x00000008,       // 100%
     UNIT_NPC_FLAG_TRAINER               = 0x00000010,       // 100%
@@ -800,6 +803,9 @@ struct CharmInfo
     ReactStates GetReactState() const { return m_reactState; }
     bool HasReactState(ReactStates state) const { return m_reactState == state; }
 
+    FactionTemplateEntry const* GetOriginalFactionTemplate() const { return m_originalFactionTemplate; }
+    void SetOriginalFactionTemplate(FactionTemplateEntry const* ft) { m_originalFactionTemplate = ft; }
+
     void InitPossessCreateSpells();
     void InitCharmCreateSpells();
     void InitPetActionBar();
@@ -836,6 +842,7 @@ struct CharmInfo
 private:
 
     Unit* m_unit;
+    FactionTemplateEntry const* m_originalFactionTemplate;
 
     UnitActionBarEntry PetActionBar[MAX_UNIT_ACTION_BAR_INDEX];
     CharmSpellEntry m_charmspells[CREATURE_MAX_SPELLS];
@@ -1048,7 +1055,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         void CombatStopWithPets(bool includingCast = false);
         void StopAttackFaction(uint32 faction_id);
         Unit* SelectNearestTarget(float dist) const;
-        Unit* SelectRandomUnfriendlyTarget(Unit* except = nullptr, float radius = ATTACK_DISTANCE, bool inFront = false) const;
+        Unit* SelectRandomUnfriendlyTarget(Unit* except = nullptr, float radius = ATTACK_DISTANCE, bool inFront = false, bool isValidAttackTarget = false) const;
         Unit* SelectRandomFriendlyTarget(Unit* except = nullptr, float radius = ATTACK_DISTANCE) const;
         Unit* SummonCreatureAndAttack(uint32 creatureEntry, Unit* pVictim= nullptr);
         bool IsSecondaryThreatTarget();
@@ -1072,7 +1079,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         uint32 getRaceMask() const { return getRace() ? 1 << (getRace()-1) : 0x0; }
         uint8 getClass() const { return GetByteValue(UNIT_FIELD_BYTES_0, 1); }
         uint32 getClassMask() const { return getClass() ? 1 << (getClass()-1) : 0x0; }
-        uint8 getGender() const { return GetByteValue(UNIT_FIELD_BYTES_0, 2); }
+        uint8 getGender() const override { return GetByteValue(UNIT_FIELD_BYTES_0, 2); }
 
         /**
          * @brief Inits display id to player display ID, depending on race, class, gender
@@ -1163,8 +1170,8 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
 
         bool IsMounted() const { return (GetMountID() != 0); }
         uint32 GetMountID() const { return GetUInt32Value(UNIT_FIELD_MOUNTDISPLAYID); }
-        void Mount(uint32 mount, uint32 spellId = 0);
-        void Unmount(bool from_aura = false);
+        virtual void Mount(uint32 mount, uint32 spellId = 0);
+        virtual void Unmount(bool from_aura = false);
 
         // Tuer cette unite.
         void DoKillUnit(Unit *victim = nullptr);
@@ -1321,9 +1328,9 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         void NearTeleportTo(float x, float y, float z, float orientation, uint32 teleportOptions = TELE_TO_NOT_LEAVE_TRANSPORT | TELE_TO_NOT_LEAVE_COMBAT | TELE_TO_NOT_UNSUMMON_PET);
         void NearLandTo(float x, float y, float z, float orientation);
         void TeleportPositionRelocation(float x, float y, float z, float o);
-
-        void MonsterMoveWithSpeed(float x, float y, float z, float speed, bool generatePath = false, bool forceDestination = false);
+        void MonsterMoveWithSpeed(float x, float y, float z, float o, float speed, uint32 options);
         void MonsterMove(float x, float y, float z); // Utilise vitesse de course
+
         // recommend use MonsterMove/MonsterMoveWithSpeed for most case that correctly work with movegens
         // if used additional args in ... part then floats must explicitly casted to double
         void SendHeartBeat(bool includingSelf = true);
@@ -1356,6 +1363,9 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         ObjectGuid const& GetChannelObjectGuid() const { return GetGuidValue(UNIT_FIELD_CHANNEL_OBJECT); }
         void SetChannelObjectGuid(ObjectGuid targetGuid) { SetGuidValue(UNIT_FIELD_CHANNEL_OBJECT, targetGuid); }
 
+        ObjectGuid const& GetPossessorGuid() { return m_possessorGuid; }
+        void SetPossesorGuid(ObjectGuid possession) { m_possessorGuid = possession; }
+
         virtual Pet* GetMiniPet() const { return nullptr; }    // overwrited in Player
 
         ObjectGuid const& GetCharmerOrOwnerGuid() const { return GetCharmerGuid() ? GetCharmerGuid() : GetOwnerGuid(); }
@@ -1374,6 +1384,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         Unit* GetCharmer() const;
         Unit* GetCharm() const;
         void Uncharm();
+        void RemoveCharmAuras();
         Unit* GetCharmerOrOwner() const { return GetCharmerGuid() ? GetCharmer() : GetOwner(); }
         Unit* GetCharmerOrOwnerOrSelf()
         {
@@ -1459,6 +1470,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         void RemoveAllAuras(AuraRemoveMode mode = AURA_REMOVE_BY_DEFAULT);
         void RemoveAurasAtReset(AuraRemoveMode mode = AURA_REMOVE_BY_DEFAULT);
         void RemoveAllNegativeAuras(AuraRemoveMode mode = AURA_REMOVE_BY_DEFAULT);
+        void RemoveAuraTypeOnDeath(AuraType auraType);
         void RemoveAllAurasOnDeath();
 
         // removing specific aura FROM stack by diff reasons and selections
@@ -1516,12 +1528,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
             return form == FORM_CAT || form == FORM_BEAR || form == FORM_DIREBEAR;
         }
 
-        bool IsInDisallowedMountForm() const
-        {
-            ShapeshiftForm form = GetShapeshiftForm();
-            return form != FORM_NONE && form != FORM_BATTLESTANCE && form != FORM_BERSERKERSTANCE && form != FORM_DEFENSIVESTANCE &&
-                form != FORM_SHADOW && form != FORM_STEALTH;
-        }
+        bool IsInDisallowedMountForm() const;
 
         float m_modMeleeHitChance;
         float m_modRangedHitChance;
@@ -1586,6 +1593,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         SingleCastSpellTargetMap      & GetSingleCastSpellTargets()       { return m_singleCastSpellTargets; }
         SingleCastSpellTargetMap const& GetSingleCastSpellTargets() const { return m_singleCastSpellTargets; }
         SpellImmuneList m_spellImmune[MAX_SPELL_IMMUNITY];
+        uint32 m_lastSanctuaryTime;
 
         // Threat related methods
         bool CanHaveThreatList() const;
@@ -1639,7 +1647,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
 
         // at any changes to scale and/or displayId
         void UpdateModelData();
-
+        void GetDynObjects(uint32 spellId, SpellEffectIndex effectIndex, std::vector<DynamicObject*>& dynObjsOut);
         DynamicObject* GetDynObject(uint32 spellId, SpellEffectIndex effIndex);
         DynamicObject* GetDynObject(uint32 spellId);
         void AddDynObject(DynamicObject* dynObj);
@@ -1692,6 +1700,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         SpellAuraProcResult HandleMechanicImmuneResistanceAuraProc(Unit *pVictim, uint32 damage, Aura* triggeredByAura, SpellEntry const *procSpell, uint32 procFlag, uint32 procEx, uint32 cooldown);
         SpellAuraProcResult HandleAddTargetTriggerAuraProc(Unit *pVictim, uint32 damage, Aura* triggeredByAura, SpellEntry const *procSpell, uint32 procFlag, uint32 procEx, uint32 cooldown);
         SpellAuraProcResult HandleModResistanceAuraProc(Unit* pVictim, uint32 damage, Aura* triggeredByAura, SpellEntry const *procSpell, uint32 procFlag, uint32 procEx, uint32 cooldown);
+        SpellAuraProcResult HandleModDamageAuraProc(Unit* pVictim, uint32 damage, Aura* triggeredByAura, SpellEntry const *procSpell, uint32 procFlag, uint32 procEx, uint32 cooldown);
         SpellAuraProcResult HandleNULLProc(Unit* /*pVictim*/, uint32 /*damage*/, Aura* /*triggeredByAura*/, SpellEntry const* /*procSpell*/, uint32 /*procFlag*/, uint32 /*procEx*/, uint32 /*cooldown*/)
         {
             // no proc handler for this aura type
@@ -1706,12 +1715,12 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         void SetLastManaUse() { m_lastManaUseTimer = 5000; }
         bool IsUnderLastManaUseEffect() const { return m_lastManaUseTimer; }
 
-        void SetContestedPvP(Player *attackedPlayer = nullptr);
+        void SetContestedPvP(Unit *attackedUnit = nullptr);
 
         void ApplySpellImmune(uint32 spellId, uint32 op, uint32 type, bool apply);
         void ApplySpellDispelImmunity(const SpellEntry * spellProto, DispelType type, bool apply);
         virtual bool IsImmuneToSpell(SpellEntry const* spellInfo, bool castOnSelf);
-        virtual bool IsImmuneToDamage(SpellSchoolMask meleeSchoolMask);
+        virtual bool IsImmuneToDamage(SpellSchoolMask meleeSchoolMask, SpellEntry const* spellInfo = nullptr);
         virtual bool IsImmuneToSpellEffect(SpellEntry const* spellInfo, SpellEffectIndex index, bool castOnSelf) const;
 
         float GetSpellResistChance(Unit* victim, uint32 schoolMask, bool innateResists) const;
@@ -1779,6 +1788,8 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
 
         // group updates
         void UpdateAuraForGroup(uint8 slot);
+        
+        bool IsLinkingEventTrigger() { return m_isCreatureLinkingTrigger; }
 
         // pet auras
         typedef std::set<PetAura const*> PetAuraSet;
@@ -1833,7 +1844,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         virtual void OnMoveTo(float, float, float) {}
 
         // Appele dans SpellEffects::EffectSummonPet et apres un rez en BG.
-        void EffectSummonPet(uint32 spellId, uint32 petEntry);
+        ObjectGuid EffectSummonPet(uint32 spellId, uint32 petEntry);
         void ModPossess(Unit* target, bool apply, AuraRemoveMode m_removeMode = AURA_REMOVE_BY_DEFAULT);
 
         // Caster ?
@@ -1912,6 +1923,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         void resetTransformScale();
         float getNativeScale() const;
         void setNativeScale(float scale);
+
     protected:
         explicit Unit ();
 
@@ -1954,6 +1966,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         float m_speed_rate[MAX_MOVE_TYPE];
 
         CharmInfo *m_charmInfo;
+        ObjectGuid m_possessorGuid; // Guid of unit possessing this one
 
         virtual SpellSchoolMask GetMeleeDamageSchoolMask() const;
 
@@ -1967,9 +1980,17 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
 
         SpellCooldowns m_spellCooldowns;
         GlobalCooldownMgr m_GlobalCooldownMgr;
+
+        bool m_isCreatureLinkingTrigger;
+        bool m_isSpawningLinked;
+
     public:
         void DisableSpline();
         void UnitDamaged(ObjectGuid from, uint32 damage) { _damageTakenHistory[from] += damage; _lastDamageTaken = 0; }
+        void SetMeleeZLimit(float newZLimit) { m_meleeZLimit = newZLimit; }
+        float GetMeleeZLimit() const { return m_meleeZLimit; }
+        void SetMeleeZReach(float newZReach) { m_meleeZReach = newZReach; }
+        float GetMeleeZReach() const { return m_meleeZReach; }
 
     protected:
         typedef std::map<ObjectGuid /*attackerGuid*/, uint32 /*damage*/ > DamageTakenHistoryMap;
@@ -2014,6 +2035,9 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         GuardianPetList m_guardianPets;
 
         ObjectGuid m_TotemSlot[MAX_TOTEM_SLOT];
+
+        float m_meleeZLimit;
+        float m_meleeZReach;
 
         // Error traps for some wrong args using
         // this will catch and prevent build for any cases when all optional args skipped and instead triggered used non boolean type

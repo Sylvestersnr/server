@@ -48,6 +48,7 @@
 #include "Anticheat.h"
 #include "MasterPlayer.h"
 #include "GossipDef.h"
+#include "GameEventMgr.h"
 
 void WorldSession::HandleRepopRequestOpcode(WorldPacket & /*recv_data*/)
 {
@@ -307,15 +308,19 @@ void WorldSession::HandleLogoutRequestOpcode(WorldPacket & /*recv_data*/)
     if (ObjectGuid lootGuid = GetPlayer()->GetLootGuid())
         DoLootRelease(lootGuid);
 
-    //Can not logout if...
-    if (GetPlayer()->isInCombat() ||                        //...is in combat
-            GetPlayer()->duel         ||                        //...is in Duel
-            //...is jumping ...is falling
-            GetPlayer()->m_movementInfo.HasMovementFlag(MovementFlags(MOVEFLAG_JUMPING | MOVEFLAG_FALLINGFAR)))
+    uint8 reason = 0;
+
+    if (GetPlayer()->isInCombat())
+        reason = 1;
+    else if (GetPlayer()->m_movementInfo.HasMovementFlag(MovementFlags(MOVEFLAG_JUMPING | MOVEFLAG_FALLINGFAR)))
+        reason = 3;                                         // is jumping or falling
+    else if (GetPlayer()->duel || GetPlayer()->HasAura(9454)) // is dueling or frozen by GM via freeze command
+        reason = 2;                                         // FIXME - Need the correct value
+
+    if (reason)
     {
-        WorldPacket data(SMSG_LOGOUT_RESPONSE, (2 + 4)) ;
-        data << (uint8)0xC;
-        data << uint32(0);
+        WorldPacket data(SMSG_LOGOUT_RESPONSE, 1 + 4);
+        data << uint32(reason);
         data << uint8(0);
         SendPacket(&data);
         LogoutRequest(0);
@@ -326,6 +331,10 @@ void WorldSession::HandleLogoutRequestOpcode(WorldPacket & /*recv_data*/)
     if (GetPlayer()->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_RESTING) || GetPlayer()->IsTaxiFlying() ||
             GetSecurity() >= (AccountTypes)sWorld.getConfig(CONFIG_UINT32_INSTANT_LOGOUT))
     {
+        WorldPacket data(SMSG_LOGOUT_RESPONSE, 1 + 4);
+        data << uint32(0);
+        data << uint8(1);
+        SendPacket(&data);
         LogoutPlayer(true);
         return;
     }
@@ -341,7 +350,7 @@ void WorldSession::HandleLogoutRequestOpcode(WorldPacket & /*recv_data*/)
         GetPlayer()->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_STUNNED);
     }
 
-    WorldPacket data(SMSG_LOGOUT_RESPONSE, 5);
+    WorldPacket data(SMSG_LOGOUT_RESPONSE, 1 + 4);
     data << uint32(0);
     data << uint8(0);
     SendPacket(&data);
@@ -417,7 +426,7 @@ void WorldSession::HandleZoneUpdateOpcode(WorldPacket & recv_data)
     // Trigger a client camera reset by sending an `SMSG_STANDSTATE_UPDATE'
     // event. See `WorldSession::HandleMoveWorldportAckOpcode'.
     // Note: There might be a better place to perform this trigger
-    if (GetPlayer()->m_movementInfo.HasMovementFlag(MOVEFLAG_ONTRANSPORT))
+    if (_clientOS == CLIENT_OS_MAC && GetPlayer()->m_movementInfo.HasMovementFlag(MOVEFLAG_ONTRANSPORT))
     {
         WorldPacket data(SMSG_STANDSTATE_UPDATE, 1);
         data << GetPlayer()->getStandState();
@@ -438,7 +447,7 @@ void WorldSession::HandleSetTargetOpcode(WorldPacket & recv_data)
     if (!unit)
         return;
 
-    if (FactionTemplateEntry const* factionTemplateEntry = sFactionTemplateStore.LookupEntry(unit->getFaction()))
+    if (FactionTemplateEntry const* factionTemplateEntry = sObjectMgr.GetFactionTemplateEntry(unit->getFaction()))
         _player->GetReputationMgr().SetVisible(factionTemplateEntry);
 }
 
@@ -453,7 +462,7 @@ void WorldSession::HandleSetSelectionOpcode(WorldPacket & recv_data)
     Unit* unit = ObjectAccessor::GetUnit(*_player, guid);   // can select group members at diff maps
 
     if (unit)
-        if (FactionTemplateEntry const* factionTemplateEntry = sFactionTemplateStore.LookupEntry(unit->getFaction()))
+        if (FactionTemplateEntry const* factionTemplateEntry = sObjectMgr.GetFactionTemplateEntry(unit->getFaction()))
             _player->GetReputationMgr().SetVisible(factionTemplateEntry);
 
     // Drop combo points only for rogues and druids
@@ -810,44 +819,32 @@ void WorldSession::HandleAreaTriggerOpcode(WorldPacket & recv_data)
     if (!targetMapEntry)
         return;
 
+    if (at->required_event)
+    {
+        if (at->required_event > 0 && !sGameEventMgr.IsActiveEvent((uint16)(at->required_event)))
+            return;
+        else if (at->required_event < 0 && sGameEventMgr.IsActiveEvent((uint16)(-at->required_event)))
+            return;
+    }
+
     auto playerRank = sWorld.getConfig(CONFIG_BOOL_ACCURATE_PVP_ZONE_REQUIREMENTS) ?
         GetPlayer()->GetHonorMgr().GetRank().visualRank
         : GetPlayer()->GetHonorMgr().GetHighestRank().visualRank;
 
     if (!pl->isGameMaster())
     {
-        // (Hack) : Entree dans les zones de recompenses JcJ
-        if (Trigger_ID == 2527) // Hall des Champions
+        bool missingRank = false;
+        if (at->required_pvp_rank)
         {
-            if (GetPlayer()->GetTeam() == HORDE)
-            {
-                if (playerRank < 6)
-                {
-                    SendAreaTriggerMessage("You must have the rank Stone Guard to enter");
-                    return;
-                }
-            }
-            else
-            {
-                SendAreaTriggerMessage("Only Horde member can enter");
-                return;
-            }
+            if (playerRank < at->required_pvp_rank)
+                missingRank = true;
         }
-        else if (Trigger_ID == 2532)
+
+        bool missingTeam = false;
+        if (at->required_team)
         {
-            if (GetPlayer()->GetTeam() == ALLIANCE)
-            {
-                if (playerRank < 6)
-                {
-                    SendAreaTriggerMessage("You must have the rank Knight to enter");
-                    return;
-                }
-            }
-            else
-            {
-                SendAreaTriggerMessage("Only Alliance member can enter");
-                return;
-            }
+            if (GetPlayer()->GetTeam() != at->required_team)
+                missingTeam = true;
         }
 
         // ghost resurrected at enter attempt to dungeon with corpse (including fail enter cases)
@@ -904,17 +901,11 @@ void WorldSession::HandleAreaTriggerOpcode(WorldPacket & recv_data)
         // La verification de naxxramas.
         if (Trigger_ID == 4055) // Naxxramas (Entrance)
         {
-            // A retirer lors de l'ouverture de l'instance apres travaux.
-//            SendAreaTriggerMessage("Instance En Travaux");
-//            return;
-            //
-
             if (!GetPlayer()->GetQuestRewardStatus(9121) && !GetPlayer()->GetQuestRewardStatus(9122) && !GetPlayer()->GetQuestRewardStatus(9123))
             {
-//               SendAreaTriggerMessage("You need to accomplish the Naxxramas quest to enter");
+                SendAreaTriggerMessage("You must complete The Dread Citadel to enter Naxxramas");
                 return;
             }
-
         }
         // fin Verification Naxxramas
 
@@ -922,15 +913,19 @@ void WorldSession::HandleAreaTriggerOpcode(WorldPacket & recv_data)
         if (at->requiredQuest && !GetPlayer()->GetQuestRewardStatus(at->requiredQuest))
             missingQuest = at->requiredQuest;
 
-        if (missingLevel || missingItem || missingQuest)
+        if (missingLevel || missingItem || missingQuest || missingRank || missingTeam)
         {
             if (missingItem)
                 SendAreaTriggerMessage(GetMangosString(LANG_LEVEL_MINREQUIRED_AND_ITEM), at->requiredLevel, ObjectMgr::GetItemPrototype(missingItem)->Name1);
-
             else if (missingQuest)
                 SendAreaTriggerMessage("%s", at->requiredFailedText.c_str());
             else if (missingLevel)
                 SendAreaTriggerMessage(GetMangosString(LANG_LEVEL_MINREQUIRED), missingLevel);
+            else if (missingRank)
+                SendAreaTriggerMessage("You must be at least rank %u to enter", at->required_pvp_rank);
+            else if (missingTeam)
+                SendAreaTriggerMessage("Only %s may enter here", at->required_team == HORDE ? "Horde" : "Alliance");
+
             return;
         }
     }
@@ -1135,6 +1130,27 @@ void WorldSession::HandleWorldTeleportOpcode(WorldPacket& recv_data)
     DEBUG_LOG("Received worldport command from player %s", GetPlayer()->GetName());
 }
 
+void WorldSession::HandleMoveSetRawPosition(WorldPacket& recv_data)
+{
+    DEBUG_LOG("WORLD: Received opcode CMSG_MOVE_SET_RAW_POSITION from %s", GetPlayer()->GetGuidStr().c_str());
+    // write in client console: setrawpos x y z o
+    // For now, it is implemented like worldport but on the same map. Consider using MSG_MOVE_SET_RAW_POSITION_ACK.
+    float PosX, PosY, PosZ, PosO;
+    recv_data >> PosX >> PosY >> PosZ >> PosO;
+    //DEBUG_LOG("Set to: X=%f, Y=%f, Z=%f, orient=%f", PosX, PosY, PosZ, PosO);
+
+    if (!GetPlayer()->IsInWorld() || GetPlayer()->IsTaxiFlying())
+    {
+        DEBUG_LOG("Player '%s' (GUID: %u) in a transfer, ignore setrawpos command.", GetPlayer()->GetName(), GetPlayer()->GetGUIDLow());
+        return;
+    }
+
+    if (GetSecurity() >= SEC_ADMINISTRATOR)
+        GetPlayer()->NearTeleportTo(PosX, PosY, PosZ, PosO);
+    else
+        SendNotification(LANG_YOU_NOT_HAVE_PERMISSION);
+}
+
 void WorldSession::HandleWhoisOpcode(WorldPacket& recv_data)
 {
     DEBUG_LOG("Received opcode CMSG_WHOIS");
@@ -1183,7 +1199,7 @@ void WorldSession::HandleWhoisOpcode(WorldPacket& recv_data)
 
     std::string msg = charname + "'s " + "account is " + acc + ", e-mail: " + email + ", last ip: " + lastip;
 
-    WorldPacket data(SMSG_WHOIS, msg.size() + 1);
+    WorldPacket data(SMSG_WHOIS, msg.size() + 1); // max CString length allowed: 256
     data << msg;
     _player->GetSession()->SendPacket(&data);
 
@@ -1230,27 +1246,6 @@ void WorldSession::HandleResetInstancesOpcode(WorldPacket & /*recv_data*/)
         _player->ResetInstances(INSTANCE_RESET_ALL);
 }
 
-void WorldSession::HandleCancelMountAuraOpcode(WorldPacket & /*recv_data*/)
-{
-    DEBUG_LOG("WORLD: CMSG_CANCEL_MOUNT_AURA");
-
-    //If player is not mounted, so go out :)
-    if (!_player->IsMounted())                              // not blizz like; no any messages on blizz
-    {
-        ChatHandler(this).SendSysMessage(LANG_CHAR_NON_MOUNTED);
-        return;
-    }
-
-    if (_player->IsTaxiFlying())                            // not blizz like; no any messages on blizz
-    {
-        ChatHandler(this).SendSysMessage(LANG_YOU_IN_FLIGHT);
-        return;
-    }
-
-    _player->Unmount(_player->HasAuraType(SPELL_AURA_MOUNTED));
-    _player->RemoveSpellsCausingAura(SPELL_AURA_MOUNTED);
-}
-
 void WorldSession::HandleRequestPetInfoOpcode(WorldPacket & /*recv_data */)
 {
     DEBUG_LOG("WORLD: CMSG_REQUEST_PET_INFO");
@@ -1259,14 +1254,6 @@ void WorldSession::HandleRequestPetInfoOpcode(WorldPacket & /*recv_data */)
         _player->PetSpellInitialize();
     else if (_player->GetCharm())
         _player->CharmSpellInitialize();
-}
-
-void WorldSession::HandleSetTaxiBenchmarkOpcode(WorldPacket & recv_data)
-{
-    uint8 mode;
-    recv_data >> mode;
-
-    DEBUG_LOG("Client used \"/timetest %d\" command", mode);
 }
 
 void WorldSession::HandleWardenDataOpcode(WorldPacket & recv_data)

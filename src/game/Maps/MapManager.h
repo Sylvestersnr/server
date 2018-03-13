@@ -41,11 +41,13 @@ enum
     MAP0_STORMWIND_AREA = 5,    // Stormwind, Elwynn forest, Redridge Mts
     MAP0_SOUTH          = 6,    // Southern phase of the continent
 
-    MAP1_NORTH          = 11,
-    MAP1_DUROTAR        = 12,
-    MAP1_MIDDLE_EST     = 13,   // Mulgore, Barrens, Dustwallow Marsh
-    MAP1_SOUTH          = 14,   // Feralas and south
+    MAP1_NORTH          = 11,   // Stonetalon, Ashenvale, Darkshore, Felwood, Moonglade, Winterspring, Azshara, Desolace
+    MAP1_DUROTAR        = 12,   // Durotar
+    MAP1_UPPER_MIDDLE   = 13,   // Mulgore, Barrens, Dustwallow Marsh
+    MAP1_LOWER_MIDDLE   = 14,   // Feralas, 1K needles
     MAP1_VALLEY         = 15,   // Orc and Troll starting area
+    MAP1_ORGRIMMAR      = 16,   // Orgrimmar (on its own)
+    MAP1_SOUTH          = 17,   // Silithus, Un'goro and Tanaris
 
     MAP0_FIRST          = 1,
     MAP0_LAST           = 10,
@@ -71,6 +73,8 @@ struct MANGOS_DLL_DECL MapID
     uint32 nMapId;
     uint32 nInstanceId;
 };
+
+struct ScheduledTeleportData;
 
 class MANGOS_DLL_DECL MapManager : public MaNGOS::Singleton<MapManager, MaNGOS::ClassLevelLockable<MapManager, ACE_Recursive_Thread_Mutex> >
 {
@@ -178,6 +182,11 @@ class MANGOS_DLL_DECL MapManager : public MaNGOS::Singleton<MapManager, MaNGOS::
         void ScheduleInstanceSwitch(Player* player, uint16 newInstance);
         void SwitchPlayersInstances();
 
+        void ScheduleFarTeleport(Player *player, ScheduledTeleportData *data);
+        void ExecuteDelayedPlayerTeleports();
+        void ExecuteSingleDelayedTeleport(Player *player);
+        void CancelDelayedPlayerTeleport(Player *player);
+
         void MarkContinentUpdateFinished(int idx)
         {
             ASSERT(idx < i_maxContinentThread);
@@ -223,11 +232,18 @@ class MANGOS_DLL_DECL MapManager : public MaNGOS::Singleton<MapManager, MaNGOS::
         uint32 i_MaxInstanceId;
         int             i_maxContinentThread;
         volatile bool*  i_continentUpdateFinished;
+        bool asyncMapUpdating;
 
         // Instanced continent zones
         const static int LAST_CONTINENT_ID = 2;
         ACE_Thread_Mutex    m_scheduledInstanceSwitches_lock[LAST_CONTINENT_ID];
         std::map<Player*, uint16 /* new instance */> m_scheduledInstanceSwitches[LAST_CONTINENT_ID]; // 2 continents
+
+        ACE_Thread_Mutex m_scheduledFarTeleportsLock;
+        typedef std::map<Player*, ScheduledTeleportData*> ScheduledTeleportMap;
+        ScheduledTeleportMap m_scheduledFarTeleports;
+
+        void ExecuteSingleDelayedTeleport(ScheduledTeleportMap::iterator iter);
 };
 
 template<typename Do>

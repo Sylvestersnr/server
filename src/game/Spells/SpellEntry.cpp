@@ -14,122 +14,11 @@ SpellEntry::~SpellEntry()
     }
 }
 
-bool SpellEntry::Load(DBCSpellEntry const* dbcEntry)
-{
-    if (!dbcEntry)
-        return false;
-
-#define COPY_FIELD(field) field = dbcEntry->field;
-
-#define COPY_ARRAY(size, field) { for (int i = 0; i < size; ++i) field[i] = dbcEntry->field[i]; }
-
-#define COPY_CHAR_ARRAY(field)\
-    {\
-        for (int i = 0; i < MAX_DBC_LOCALE; ++i)\
-        {\
-            field[i] = NULL;\
-            if (dbcEntry->field[i])\
-            {\
-                field[i] = new char[strlen(dbcEntry->field[i]) + 1]; \
-                strcpy(field[i], dbcEntry->field[i]);\
-            }\
-        }\
-    }
-
-    /// Copie des champs
-    COPY_FIELD(Id);
-    COPY_FIELD(School);
-    COPY_FIELD(Category);
-    COPY_FIELD(castUI);
-    COPY_FIELD(Dispel);
-    COPY_FIELD(Mechanic);
-    COPY_FIELD(Attributes);
-    COPY_FIELD(AttributesEx);
-    COPY_FIELD(AttributesEx2);
-    COPY_FIELD(AttributesEx3);
-    COPY_FIELD(AttributesEx4);
-    COPY_FIELD(Stances);
-    COPY_FIELD(StancesNot);
-    COPY_FIELD(Targets);
-    COPY_FIELD(TargetCreatureType);
-    COPY_FIELD(RequiresSpellFocus);
-    COPY_FIELD(CasterAuraState);
-    COPY_FIELD(TargetAuraState);
-    COPY_FIELD(CastingTimeIndex);
-    COPY_FIELD(RecoveryTime);
-    COPY_FIELD(CategoryRecoveryTime);
-    COPY_FIELD(InterruptFlags);
-    COPY_FIELD(AuraInterruptFlags);
-    COPY_FIELD(ChannelInterruptFlags);
-    COPY_FIELD(procFlags);
-    COPY_FIELD(procChance);
-    COPY_FIELD(procCharges);
-    COPY_FIELD(maxLevel);
-    COPY_FIELD(baseLevel);
-    COPY_FIELD(spellLevel);
-    COPY_FIELD(DurationIndex);
-    COPY_FIELD(powerType);
-    COPY_FIELD(manaCost);
-    COPY_FIELD(manaCostPerlevel);
-    COPY_FIELD(manaPerSecond);
-    COPY_FIELD(manaPerSecondPerLevel);
-    COPY_FIELD(rangeIndex);
-    COPY_FIELD(speed);
-    COPY_FIELD(modalNextSpell);
-    COPY_FIELD(StackAmount);
-    COPY_ARRAY(MAX_SPELL_TOTEMS, Totem);
-    COPY_ARRAY(MAX_SPELL_REAGENTS, Reagent);
-    COPY_ARRAY(MAX_SPELL_REAGENTS, ReagentCount);
-    COPY_FIELD(EquippedItemClass);
-    COPY_FIELD(EquippedItemSubClassMask);
-    COPY_FIELD(EquippedItemInventoryTypeMask);
-    COPY_ARRAY(MAX_EFFECT_INDEX, Effect);
-    COPY_ARRAY(MAX_EFFECT_INDEX, EffectDieSides);
-    COPY_ARRAY(MAX_EFFECT_INDEX, EffectBaseDice);
-    COPY_ARRAY(MAX_EFFECT_INDEX, EffectDicePerLevel);
-    COPY_ARRAY(MAX_EFFECT_INDEX, EffectRealPointsPerLevel);
-    COPY_ARRAY(MAX_EFFECT_INDEX, EffectBasePoints);
-    COPY_ARRAY(MAX_EFFECT_INDEX, EffectMechanic);
-    COPY_ARRAY(MAX_EFFECT_INDEX, EffectImplicitTargetA);
-    COPY_ARRAY(MAX_EFFECT_INDEX, EffectImplicitTargetB);
-    COPY_ARRAY(MAX_EFFECT_INDEX, EffectRadiusIndex);
-    COPY_ARRAY(MAX_EFFECT_INDEX, EffectApplyAuraName);
-    COPY_ARRAY(MAX_EFFECT_INDEX, EffectAmplitude);
-    COPY_ARRAY(MAX_EFFECT_INDEX, EffectMultipleValue);
-    COPY_ARRAY(MAX_EFFECT_INDEX, EffectChainTarget);
-    COPY_ARRAY(MAX_EFFECT_INDEX, EffectItemType);
-    COPY_ARRAY(MAX_EFFECT_INDEX, EffectMiscValue);
-    COPY_ARRAY(MAX_EFFECT_INDEX, EffectTriggerSpell);
-    COPY_ARRAY(MAX_EFFECT_INDEX, EffectPointsPerComboPoint);
-
-    COPY_FIELD(SpellVisual);
-    COPY_FIELD(SpellVisual2);
-    COPY_FIELD(SpellIconID);
-    COPY_FIELD(activeIconID);
-    COPY_FIELD(spellPriority);
-    COPY_CHAR_ARRAY(SpellName);
-    COPY_FIELD(SpellNameFlag);
-    COPY_CHAR_ARRAY(Rank);
-    COPY_FIELD(ManaCostPercentage);
-    COPY_FIELD(StartRecoveryCategory);
-    COPY_FIELD(StartRecoveryTime);
-    COPY_FIELD(MaxTargetLevel);
-    COPY_FIELD(SpellFamilyName);
-    COPY_FIELD(SpellFamilyFlags);
-    COPY_FIELD(MaxAffectedTargets);
-    COPY_FIELD(DmgClass);
-    COPY_FIELD(PreventionType);
-    COPY_ARRAY(MAX_EFFECT_INDEX, DmgMultiplier);
-
-    /// Chargements supplementaires
-    InitCachedValues();
-    return true;
-}
-
 void SpellEntry::InitCachedValues()
 {
     ComputeBinary();
     ComputeDispel();
+    ComputeNonPeriodicDispel();
 }
 
 void SpellEntry::ComputeBinary()
@@ -184,12 +73,25 @@ void SpellEntry::ComputeBinary()
     }
 }
 
+void SpellEntry::ComputeNonPeriodicDispel()
+{
+    _isNonPeriodicDispel = true;
+    for (int i = 0; i < 3; ++i)
+        if (_isNonPeriodicDispel && Effect[i] != 0 && (Effect[i] != SPELL_EFFECT_DISPEL || EffectRadiusIndex[i] != 0))
+            _isNonPeriodicDispel = false;
+}
+
 void SpellEntry::ComputeDispel()
 {
-    _isDispel = true;
+    _isDispel = false;
     for (int i = 0; i < 3; ++i)
-        if (_isDispel && Effect[i] != 0 && (Effect[i] != SPELL_EFFECT_DISPEL || EffectRadiusIndex[i] != 0))
-            _isDispel = false;
+    {
+        if (Effect[i] == SPELL_EFFECT_DISPEL)
+        {
+            _isDispel = true;
+            break;
+        }
+    }
 }
 DiminishingGroup SpellEntry::GetDiminishingReturnsGroup(bool triggered) const
 {
@@ -240,10 +142,21 @@ DiminishingGroup SpellEntry::GetDiminishingReturnsGroup(bool triggered) const
                 return DIMINISHING_CONTROL_ROOT;
             break;
         }
+        case SPELLFAMILY_MAGE:
+        {
+            // Ice Block
+            if (SpellVisual == 4325)
+                return DIMINISHING_NONE;
+            break;
+        }
         case SPELLFAMILY_GENERIC:
         {
-            if (Id == 12355) // Impact
+            // Impact
+            if (Id == 12355)
                 return DIMINISHING_TRIGGER_STUN; // avant 'DIMINISHING_NONE' (MaNGOSZero)
+            // Pyroclasm
+            if (Id == 18093)
+                return DIMINISHING_NONE; // No diminishing returns (Patch 1.9)
             break;
         }
         default:

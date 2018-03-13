@@ -57,12 +57,20 @@ enum AuctionAction
     AUCTION_BID_PLACED  = 2                                 // ERR_AUCTION_BID_PLACED
 };
 
+enum AuctionClientQueryType
+{
+    AUCTION_QUERY_LIST,
+    AUCTION_QUERY_LIST_OWNER,
+    AUCTION_QUERY_LIST_BIDDER
+};
+
 struct AuctionEntry
 {
     uint32 Id;
     uint32 itemGuidLow;
     uint32 itemTemplate;
     uint32 owner;
+    uint32 ownerAccount;
     uint32 startbid;                                        // maybe useless
     uint32 bid;
     uint32 buyout;
@@ -81,6 +89,7 @@ struct AuctionEntry
     bool BuildAuctionInfo(WorldPacket & data) const;
     void DeleteFromDB() const;
     void SaveToDB() const;
+    bool IsAvailableFor(Player* player);
 };
 
 struct AuctionHouseClientQuery
@@ -91,6 +100,8 @@ struct AuctionHouseClientQuery
     uint8 levelmax;
     uint8 usable;
     uint32 listfrom, auctionSlotID, auctionMainCategory, auctionSubCategory, quality;
+    uint32 outbiddedCount;
+    std::vector<uint32> outbiddedAuctionIds;
 };
 
 //this class is used as auctionhouse instance
@@ -105,16 +116,13 @@ class AuctionHouseObject
         }
 
         typedef std::map<uint32, AuctionEntry*> AuctionEntryMap;
+        typedef std::multimap<uint32, AuctionEntry*> AuctionMultiMap;
 
         uint32 GetCount() { return AuctionsMap.size(); }
 
         AuctionEntryMap *GetAuctions() { return &AuctionsMap; }
 
-        void AddAuction(AuctionEntry *ah)
-        {
-            MANGOS_ASSERT( ah );
-            AuctionsMap[ah->Id] = ah;
-        }
+        void AddAuction(AuctionEntry *ah);
 
         AuctionEntry* GetAuction(uint32 id) const
         {
@@ -122,7 +130,7 @@ class AuctionHouseObject
             return itr != AuctionsMap.end() ? itr->second : NULL;
         }
 
-        bool RemoveAuction(uint32 id);
+        bool RemoveAuction(AuctionEntry* entry);
 
         void Update();
 
@@ -131,7 +139,13 @@ class AuctionHouseObject
         void BuildListAuctionItems(WorldPacket& data, Player* player,
                 AuctionHouseClientQuery const& query,
             uint32& count, uint32& totalcount);
+        uint32 GetAccountAuctionCount(uint32 accountId) { return AccountAuctionMap.count(accountId); }
     private:
+        // Map BUYOUT prices to entry for pre-sorted results. We maintain it in
+        // a map rather than build the list on query for performance reasons.
+        // Similarly, maintain a map of account ID -> auction entry
+        AuctionMultiMap OrderedAuctionMap;
+        AuctionMultiMap AccountAuctionMap;
         AuctionEntryMap AuctionsMap;
 };
 

@@ -64,7 +64,7 @@ Pet::Pet(PetType type) :
     m_TrainingPoints(0), m_resetTalentsCost(0), m_resetTalentsTime(0),
     m_removed(false), m_happinessTimer(7500), m_loyaltyTimer(12000), m_petType(type), m_duration(0),
     m_loyaltyPoints(0), m_bonusdamage(0), m_auraUpdateMask(0), m_loading(false),
-    m_enabled(true)
+    m_enabled(true), m_unSummoned(false)
 {
     m_name = "Pet";
     m_regenTimer = 4000;
@@ -1005,6 +1005,11 @@ int32 Pet::GetDispTP() const
 
 void Pet::Unsummon(PetSaveMode mode, Unit* owner /*= NULL*/)
 {
+    if (m_removed || m_unSummoned)
+        return;
+
+    m_unSummoned = true;
+
     if (!owner)
         owner = GetOwner();
 
@@ -1013,7 +1018,10 @@ void Pet::Unsummon(PetSaveMode mode, Unit* owner /*= NULL*/)
     if (owner)
     {
         if (GetOwnerGuid() != owner->GetObjectGuid())
+        {
+            m_unSummoned = false;
             return;
+        }
 
         Player* p_owner = owner->GetTypeId() == TYPEID_PLAYER ? (Player*)owner : NULL;
 
@@ -1073,13 +1081,39 @@ void Pet::Unsummon(PetSaveMode mode, Unit* owner /*= NULL*/)
                     p_owner->_SetMiniPet(nullptr);
                 break;
             case GUARDIAN_PET:
+            {
+                // Alert summoner that we're about to despawn. Do it before we clear
+                // the guardian ref, so it can still be utilized if necessary
+                if (Creature *creature = owner->ToCreature())
+                {
+                    if (creature->AI())
+                        creature->AI()->SummonedCreatureDespawn(this);
+                }
+
                 owner->RemoveGuardian(this);
                 break;
+            }
             default:
                 if (owner->GetPetGuid() == GetObjectGuid())
                     owner->SetPet(nullptr);
                 break;
         }
+    }
+
+    // If we're being charmed, remove the charm
+    if (Unit* charmer = GetUnit(*this, GetCharmerGuid()))
+        charmer->RemoveCharmAuras();
+
+    // If we're being possessed, remove the possesion. If we don't, and the caster
+    // is a player, they are left with a dangling pointer for Player::m_mover
+    if (Unit *possessor = GetUnit(*this, GetPossessorGuid()))
+    {
+        // Remove any auras due to the spell if they exist
+        if (uint32 spellId = GetUInt32Value(UNIT_CREATED_BY_SPELL))
+            possessor->RemoveAurasDueToSpell(spellId);
+
+        if (Player *pPlayerPossessor = possessor->ToPlayer())
+            pPlayerPossessor->ModPossessPet(this, false, AURA_REMOVE_BY_DEFAULT);
     }
 
     SavePetToDB(mode);
@@ -1250,6 +1284,7 @@ bool Pet::InitStatsForLevel(uint32 petlevel, Unit* owner)
 
     SetLevel(petlevel);
 
+    // Before 1.9 pets retain their wild damage type
     if (sWorld.GetWowPatch() < WOW_PATCH_109)
         SetMeleeDamageSchool(SpellSchools(cinfo->dmgschool));
     else
@@ -1282,7 +1317,8 @@ bool Pet::InitStatsForLevel(uint32 petlevel, Unit* owner)
 
     int32 createResistance[MAX_SPELL_SCHOOL] = {0, 0, 0, 0, 0, 0, 0};
 
-    if (getPetType() != HUNTER_PET)
+    // Before 1.9 pets retain their wild resistances
+    if (getPetType() != HUNTER_PET || sWorld.GetWowPatch() < WOW_PATCH_109)
     {
         createResistance[SPELL_SCHOOL_HOLY]   = cinfo->resistance1;
         createResistance[SPELL_SCHOOL_FIRE]   = cinfo->resistance2;

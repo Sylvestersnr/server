@@ -27,6 +27,7 @@ EndScriptData */
 #include "MovementGenerator.h"
 #include "Player.h"
 #include "Util.h"
+#include "GameEventMgr.h"
 
 // **** This script is for use within every single guard to save coding time ****
 
@@ -36,13 +37,25 @@ EndScriptData */
 #define SAY_GUARD_SIL_AGGRO2        -1000199
 #define SAY_GUARD_SIL_AGGRO3        -1000200
 
-guardAI::guardAI(Creature* pCreature) : ScriptedAI(pCreature),
+#define EVENT_VALENTINES             8
+#define SPELL_COLOGNE                26681
+#define SPELL_PERFUME                26682
+#define SPELL_LOVE_IN_AIR            27741
+#define SPELL_AMOROUS                26869
+
+
+guardAI::guardAI(Creature* pCreature, bool isCapitalGuard) : ScriptedAI(pCreature),
     GlobalCooldown(0),
-    BuffTimer(0)
-{}
+    BuffTimer(0),
+    CapitalGuard(isCapitalGuard)
+{
+    Gender = sObjectMgr.GetCreatureModelInfo(pCreature->GetDisplayId())->gender;
+    Reset();
+}
 
 void guardAI::Reset()
 {
+    
     GlobalCooldown = 0;
     BuffTimer = 0;                                          //Rebuff as soon as we can
 }
@@ -190,6 +203,56 @@ void guardAI::UpdateAI(const uint32 diff)
         }
     }
 }
+
+void guardAI::MoveInLineOfSight(Unit* pWho)
+{
+    if (!m_creature->IsWithinDistInMap(pWho, m_creature->GetAttackDistance(pWho)))
+        return;
+
+    // Valentine Event Aura
+    if (CapitalGuard && sGameEventMgr.IsActiveEvent(EVENT_VALENTINES) && m_creature->HasAura(SPELL_AMOROUS))
+    {
+        if (Gender == GENDER_FEMALE && pWho->HasAura(SPELL_COLOGNE) || (Gender != GENDER_FEMALE && pWho->HasAura(SPELL_PERFUME)))
+            m_creature->AddAura(SPELL_LOVE_IN_AIR, ADD_AURA_PERMANENT);
+    }
+
+    if (m_creature->CanInitiateAttack() && pWho->isTargetableForAttack())
+    {
+        // Attack hostile targets
+        if (m_creature->IsHostileTo(pWho) && pWho->isInAccessablePlaceFor(m_creature) && m_creature->IsWithinLOSInMap(pWho))
+        {
+            if (!m_creature->getVictim())
+                AttackStart(pWho);
+            else if (m_creature->GetMap()->IsDungeon())
+            {
+                pWho->SetInCombatWith(m_creature);
+                m_creature->AddThreat(pWho);
+            }
+        }
+        // Protect nearby friendly NPCs
+        else if (!m_creature->getVictim() && pWho->isInCombat() && pWho->GetCharmerOrOwnerPlayerOrPlayerItself())
+        {
+            if (pWho->getVictim() && pWho->getVictim()->IsCreature() && m_creature->IsFriendlyTo(pWho->getVictim()))
+            {
+                pWho->SetContestedPvP();
+            }
+            else if (!pWho->getAttackers().empty())
+            {
+                for (Unit::AttackerSet::const_iterator itr = pWho->getAttackers().begin(); itr != pWho->getAttackers().end();)
+                {
+                    if ((*itr)->IsCreature() && m_creature->IsFriendlyTo((*itr)))
+                    {
+                        pWho->SetContestedPvP();
+                        break;
+                    }
+                    else
+                        ++itr;
+                }
+            }
+        }
+    }
+}
+
 
 void guardAI::DoReplyToTextEmote(uint32 em)
 {

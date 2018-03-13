@@ -43,7 +43,7 @@ enum
     DOOR_OPEN_ID                = 175705,
 
     REQUIRED_SUMMONERS          = 3,
-    SAY_BOSS_FREE               = NOST_TEXT(151),
+    SAY_BOSS_FREE               = 5268
 };
 
 struct boss_pyroguard_emberseerAI : public ScriptedAI
@@ -313,7 +313,12 @@ bool ProcessEventId_event_free_pyroguard_emberseer(uint32 eventId, Object* sourc
 {
     if (!source || source->GetTypeId() != TYPEID_PLAYER)
         return true;
-    if (ScriptedInstance* instance = (ScriptedInstance*)((Player*)source)->GetInstanceData())
+
+    // Cannot find altar
+    if (!target)
+        return true;
+
+    if (ScriptedInstance* instance = dynamic_cast<ScriptedInstance*>(((Player*)source)->GetInstanceData()))
         if (Creature* pyroguardEmberseer = source->ToPlayer()->GetMap()->GetCreature(instance->GetData64(NPC_PYROGUARD_EMBERSEER)))
             if (boss_pyroguard_emberseerAI* bossAI = dynamic_cast<boss_pyroguard_emberseerAI*>(pyroguardEmberseer->AI()))
                 bossAI->StartWarlocksCombat();
@@ -405,7 +410,7 @@ struct npc_geolier_main_noireAI : public ScriptedAI
             Frappe_Timer -= uiDiff;
         if (!fled && m_creature->GetHealthPercent() < 15.0f)
         {
-            m_creature->DoFleeToGetAssistance();
+            m_creature->DoFlee();
             fled = true;
         }
 

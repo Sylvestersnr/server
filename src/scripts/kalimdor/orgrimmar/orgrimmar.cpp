@@ -17,51 +17,16 @@
 /* ScriptData
 SDName: Orgrimmar
 SD%Complete: 100
-SDComment: Quest support: 2460, 5727, 6566
+SDComment: Quest support: 2460, 6566
 SDCategory: Orgrimmar
 EndScriptData */
 
 /* ContentData
-npc_neeru_fireblade     npc_text + gossip options text missing
 npc_shenthul
 npc_thrall_warchief
 EndContentData */
 
 #include "scriptPCH.h"
-
-/*######
-## npc_neeru_fireblade
-######*/
-
-#define QUEST_5727  5727
-
-bool GossipHello_npc_neeru_fireblade(Player* pPlayer, Creature* pCreature)
-{
-    if (pCreature->isQuestGiver())
-        pPlayer->PrepareQuestMenu(pCreature->GetGUID());
-
-    if (pPlayer->GetQuestStatus(QUEST_5727) == QUEST_STATUS_INCOMPLETE)
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "You may speak frankly, Neeru...", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
-
-    pPlayer->SEND_GOSSIP_MENU(4513, pCreature->GetGUID());
-    return true;
-}
-
-bool GossipSelect_npc_neeru_fireblade(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
-{
-    switch (uiAction)
-    {
-        case GOSSIP_ACTION_INFO_DEF+1:
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "[PH] ...", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
-            pPlayer->SEND_GOSSIP_MENU(4513, pCreature->GetGUID());
-            break;
-        case GOSSIP_ACTION_INFO_DEF+2:
-            pPlayer->CLOSE_GOSSIP_MENU();
-            pPlayer->AreaExploredOrEventHappens(QUEST_5727);
-            break;
-    }
-    return true;
-}
 
 /*######
 ## npc_shenthul
@@ -406,6 +371,29 @@ struct npc_overlord_saurfangAI : public ScriptedAI
         m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
     }
 
+    void MovementInform(uint32 uiType, uint32 uiPointId) override
+    {
+        if (uiType != POINT_MOTION_TYPE)
+            return;
+
+        switch (uiPointId)
+        {
+            case 0:
+                m_creature->GetMotionMaster()->MovePoint(1, 1542.73f, -4425.55f, 10.87f);
+                break;
+            case 1:
+                m_uiDialogueTimer = 1000;
+                m_uiTick++;
+                break;
+            case 2:
+                m_creature->GetMotionMaster()->MovePoint(3, 1565.79f, -4395.27f, 6.9866f);
+                break;
+            case 3:
+                Reset();
+                break;
+        }
+    }
+
     void UpdateAI(const uint32 diff)
     {
       if (m_bRallyingCryEvent)
@@ -415,14 +403,19 @@ struct npc_overlord_saurfangAI : public ScriptedAI
                 switch (m_uiTick)
                 {
                     case 0:
+                        m_creature->GetMotionMaster()->MovePoint(0, 1540.54f, -4427.2f, 11.29f, MOVE_PATHFINDING);
+                        m_uiDialogueTimer = 30000; //handled by MovementInform
+                        break;
+                    case 1:
                         if (Player* pPlayer = m_creature->GetMap()->GetPlayer(m_playerGuid))
                         {
                             m_creature->HandleEmote(EMOTE_ONESHOT_SHOUT);
                             m_creature->MonsterYellToZone(YELL_NEF_REWARD_1_HORDE, 0, pPlayer);
                         }
                         m_uiDialogueTimer = 10000;
+                        m_uiTick++;
                         break;
-                    case 1:
+                    case 2:
                         if (Player* pPlayer = m_creature->GetMap()->GetPlayer(m_playerGuid))
                         {
                             m_creature->HandleEmote(EMOTE_ONESHOT_SHOUT);
@@ -436,26 +429,32 @@ struct npc_overlord_saurfangAI : public ScriptedAI
                                 pGo->Refresh();
                             }
                         }
-                        m_uiDialogueTimer = 2000;
+                        m_uiDialogueTimer = 8000;
+                        m_uiTick++;
                         break;
-                    case 2:
+                    case 3:
                         if (GameObject* pGo = m_creature->FindNearestGameObject(GO_NEFARIANS_HEAD_HORDE, 150.0f))
                         {
                             pGo->SetGoState(GO_STATE_ACTIVE);
                         }
                         m_uiDialogueTimer = 5000;
+                        m_uiTick++;
                         break;
-                    case 3:
+                    case 4:
                         m_creature->CastSpell(m_creature, SPELL_RALLYING_CRY_DRAGONSLAYER, true);
                         for (uint8 i = 0; i < MAX_RALLY_GENERATORS; ++i)
                         {
                             if (Creature* pGenerator = m_creature->SummonCreature(NPC_RALLY_CRY_GENERATOR_HORDE, aRallyGeneratorLocs[i].m_fX, aRallyGeneratorLocs[i].m_fY, aRallyGeneratorLocs[i].m_fZ, 0.0f, TEMPSUMMON_TIMED_DESPAWN, 1000))
                                 pGenerator->CastSpell(pGenerator, SPELL_RALLYING_CRY_DRAGONSLAYER, true);
                         }
-                        Reset();
+                        m_uiDialogueTimer = 10000;
+                        m_uiTick++;
+                        break;
+                    case 5:
+                        m_creature->GetMotionMaster()->MovePoint(2, 1567.39f, -4394.9f, 6.89f);
+                        m_uiDialogueTimer = 30000; //handled by MovementInform
                         return;
                 }
-                m_uiTick++;
             }
             else
                 m_uiDialogueTimer -= diff;
@@ -560,7 +559,7 @@ enum
     YELL_WARCHIEF_BLESSING_1        = -1900109,
     YELL_WARCHIEF_BLESSING_2        = -1900108,
     YELL_WARCHIEF_BLESSING_3        = -1900107,
-    WARCHIEF_BLESSING_COOLDOWN      = 21600000
+    WARCHIEF_BLESSING_COOLDOWN      = 30000
 };
 
 //TODO: verify abilities/timers
@@ -609,7 +608,9 @@ struct npc_thrall_warchiefAI : public ScriptedAI
                     case 0:
                         // Spawn Herald of Thrall in the Crossroads
                         m_pHerald = m_creature->SummonCreature(NPC_HERALD_THRALL, -462.404f, -2637.68f, 96.0656f, 5.8606f, TEMPSUMMON_TIMED_DESPAWN, WARCHIEF_BLESSING_COOLDOWN);
-                        m_pHerald->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_PASSIVE);
+                        if (m_pHerald)
+                            m_pHerald->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_PASSIVE);
+
                         m_uiBlessingEventTimer = 3000;
                         m_uiTick++;
                         break;
@@ -866,12 +867,6 @@ CreatureAI* GetAI_boss_vol_jin(Creature* pCreature)
 void AddSC_orgrimmar()
 {
     Script *newscript;
-
-    newscript = new Script;
-    newscript->Name = "npc_neeru_fireblade";
-    newscript->pGossipHello =  &GossipHello_npc_neeru_fireblade;
-    newscript->pGossipSelect = &GossipSelect_npc_neeru_fireblade;
-    newscript->RegisterSelf();
 
     newscript = new Script;
     newscript->Name = "npc_shenthul";

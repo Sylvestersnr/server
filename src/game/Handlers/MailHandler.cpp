@@ -420,6 +420,10 @@ void WorldSession::HandleMailMarkAsRead(WorldPacket & recv_data)
         m->checked = m->checked | MAIL_CHECK_MASK_READ;
         pl->MarkMailsUpdated();
         m->state = MAIL_STATE_CHANGED;
+
+        time_t time_now = time(NULL);
+        if ((m->expire_time - time_now) > (3 * DAY))
+            m->expire_time = time_now + (3 * DAY);
     }
 }
 
@@ -492,7 +496,7 @@ void WorldSession::HandleMailReturnToSender(WorldPacket & recv_data)
 
     //we can return mail now
     //so firstly delete the old one
-    CharacterDatabase.BeginTransaction();
+    CharacterDatabase.BeginTransaction(pl->GetGUIDLow());
     CharacterDatabase.PExecute("DELETE FROM mail WHERE id = '%u'", mailId);
     // needed?
     CharacterDatabase.PExecute("DELETE FROM mail_items WHERE mail_id = '%u'", mailId);
@@ -684,7 +688,7 @@ void WorldSession::HandleMailTakeMoney(WorldPacket & recv_data)
     pl->MarkMailsUpdated();
 
     // save money and mail to prevent cheating
-    CharacterDatabase.BeginTransaction();
+    CharacterDatabase.BeginTransaction(loadedPlayer->GetGUIDLow());
     loadedPlayer->SaveGoldToDB();
     pl->SaveMails();
     CharacterDatabase.CommitTransaction();
@@ -756,19 +760,23 @@ void WorldSession::HandleGetMailList(WorldPacket & recv_data)
 
         // 1.12.1 can have only single item
         Item *item = (*itr)->items.size() > 0 ? pl->GetMItem((*itr)->items[0].item_guid) : NULL;
-        data << uint32(item ? item->GetEntry() : 0);        // entry
-        // permanent enchantment
-        data << uint32(item ? item->GetEnchantmentId((EnchantmentSlot)PERM_ENCHANTMENT_SLOT) : 0);
-        // can be negative
-        data << uint32(item ? item->GetItemRandomPropertyId() : 0);
-        // unk
-        data << uint32(item ? item->GetItemSuffixFactor() : 0);
-        data << uint8(item ? item->GetCount() : 0);         // stack count
-        data << uint32(item ? item->GetSpellCharges() : 0); // charges
-        // durability
-        data << uint32(item ? item->GetUInt32Value(ITEM_FIELD_MAXDURABILITY) : 0);
-        // durability
-        data << uint32(item ? item->GetUInt32Value(ITEM_FIELD_DURABILITY) : 0);
+
+        if (item)
+        {
+            data << uint32(item->GetEntry());
+            data << uint32(item->GetEnchantmentId((EnchantmentSlot)PERM_ENCHANTMENT_SLOT)); // permanent enchantment
+            data << uint32(item->GetItemRandomPropertyId());                                // can be negative
+            data << uint32(item->GetItemSuffixFactor());                                    // unk
+            data << uint8(item->GetCount());                                                // stack count
+            data << uint32(item->GetSpellCharges());                                        // charges
+            data << uint32(item->GetUInt32Value(ITEM_FIELD_MAXDURABILITY));                 // durability max
+            data << uint32(item->GetUInt32Value(ITEM_FIELD_DURABILITY));                    // durability current
+        }
+        else
+        {
+            data << uint32(0) << uint32(0) << uint32(0) << uint32(0) << uint8(0) << uint32(0) << uint32(0) << uint32(0);
+        }
+
         data << uint32((*itr)->money);                      // copper
         data << uint32((*itr)->COD);                        // Cash on delivery
         data << uint32((*itr)->checked);                    // flags

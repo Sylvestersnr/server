@@ -33,6 +33,8 @@
 #include "Pet.h"
 #include "CharacterDatabaseCache.h"
 #include "LootMgr.h"
+#include "AuraRemovalMgr.h"
+#include "GuildMgr.h"
 
 #include "Formulas.h"
 #include "Nostalrius.h"
@@ -55,326 +57,6 @@
 #include "ModelInstance.h"
 
 #define MAX_SPELL_EFFECTS 3
-
-bool ChatHandler::HandleDbcExportSpellCommand(char *args)
-{
-    DEBUG_LOG("Debut exportation des DBC");
-
-    /* Spell */
-    std::string query = "";
-    std::string table = "";
-    std::stringstream  oss;
-    std::stringstream  tblstruct;
-    uint32 count = 0;
-    uint32 curr = 0;
-    uint32 nbQueries = 0;
-    int loc = GetSessionDbcLocale();
-    std::string spellName = "";
-    std::string spellRank = "";
-    tblstruct << "DROP TABLE IF EXISTS spell_dbc;\n";
-    tblstruct << "CREATE TABLE spell_dbc (";
-    for (uint32 id = 0; id < sSpellStore.GetNumRows(); id++)
-    {
-        SpellEntry const *spell = sSpellMgr.GetSpellEntry(id);
-        if (!spell)
-            continue;
-        curr++;
-        count++;
-        if (curr == 1)
-        {
-            // Premier
-            if (count != 1)
-                oss << ");\n\n";
-            oss << "INSERT INTO spell_dbc VALUES\n(";
-            nbQueries++;
-        }
-        else
-            oss << "),\n(";
-
-        oss << spell->Id << ",";
-        if (count == 1) tblstruct << "`Id` int(10) unsigned NOT NULL default '0',\n";
-        oss << spell->Category << ",";
-        if (count == 1) tblstruct << "`Category` int(10) unsigned NOT NULL default '0',\n";
-        oss << spell->Dispel << ",";
-        if (count == 1) tblstruct << "`Dispel` int(10) unsigned NOT NULL default '0',\n";
-        oss << spell->Mechanic << ",";
-        if (count == 1) tblstruct << "`Mechanic` int(10) unsigned NOT NULL default '0',\n";
-        oss << spell->Targets << ",";
-        if (count == 1) tblstruct << "`Targets` int(10) unsigned NOT NULL default '0',\n";
-        oss << spell->TargetCreatureType << ",";
-        if (count == 1) tblstruct << "`TargetCreatureType` int(10) unsigned NOT NULL default '0',\n";
-        oss << spell->procChance << ",";
-        if (count == 1) tblstruct << "`procChance` int(10) unsigned NOT NULL default '0',\n";
-        oss << spell->maxLevel << ",";
-        if (count == 1) tblstruct << "`maxLevel` int(10) unsigned NOT NULL default '0',\n";
-        oss << spell->baseLevel << ",";
-        if (count == 1) tblstruct << "`baseLevel` int(10) unsigned NOT NULL default '0',\n";
-        oss << spell->spellLevel << ",";
-        if (count == 1) tblstruct << "`spellLevel` int(10) unsigned NOT NULL default '0',\n";
-        oss << spell->DurationIndex << ",";
-        if (count == 1) tblstruct << "`DurationIndex` int(10) unsigned NOT NULL default '0',\n";
-        oss << spell->powerType << ",";
-        if (count == 1) tblstruct << "`powerType` int(10) unsigned NOT NULL default '0',\n";
-
-        oss << spell->manaCost << ",";
-        if (count == 1) tblstruct << "`manaCost` int(10) unsigned NOT NULL default '0',\n";
-        oss << spell->manaCostPerlevel << ",";
-        if (count == 1) tblstruct << "`manaCostPerlevel` int(10) unsigned NOT NULL default '0',\n";
-        oss << spell->manaPerSecond << ",";
-        if (count == 1) tblstruct << "`manaPerSecond` int(10) unsigned NOT NULL default '0',\n";
-        oss << spell->manaPerSecondPerLevel << ",";
-        if (count == 1) tblstruct << "`manaPerSecondPerLevel` int(10) unsigned NOT NULL default '0',\n";
-        oss << spell->rangeIndex << ",";
-        if (count == 1) tblstruct << "`rangeIndex` int(10) unsigned NOT NULL default '0',\n";
-        oss << spell->speed << ",";
-        if (count == 1) tblstruct << "`speed` float NOT NULL default '0',\n";
-
-        oss << spell->StackAmount << ",";
-        if (count == 1) tblstruct << "`StackAmount` int(10) unsigned NOT NULL default '0',\n";
-        oss << spell->SpellIconID << ",";
-        if (count == 1) tblstruct << "`SpellIconID` int(10) unsigned NOT NULL default '0',\n";
-        oss << spell->activeIconID << ",";
-        if (count == 1) tblstruct << "`activeIconID` int(10) unsigned NOT NULL default '0',\n";
-
-        /* Anti Injection SQL*/
-        spellName = spell->SpellName[loc];
-        spellRank = spell->Rank[loc];
-
-        CharacterDatabase.escape_string(spellName);
-        CharacterDatabase.escape_string(spellRank);
-
-        oss << "\"" << spellName << "\",";
-        if (count == 1) tblstruct << "`SpellName` varchar(255) NOT NULL,\n";
-        oss << "\"" << spellRank << "\",";
-        if (count == 1) tblstruct << "`Rank` varchar(255) NOT NULL,\n";
-        oss << spell->ManaCostPercentage << ",";
-        if (count == 1) tblstruct << "`ManaCostPercentage` int(10) unsigned NOT NULL default '0',\n";
-        oss << spell->StartRecoveryCategory << ",";
-        if (count == 1) tblstruct << "`StartRecoveryCategory` int(10) unsigned NOT NULL default '0',\n";
-
-        oss << spell->StartRecoveryTime << ",";
-        if (count == 1) tblstruct << "`StartRecoveryTime` int(10) unsigned NOT NULL default '0',\n";
-        oss << spell->MaxTargetLevel << ",";
-        if (count == 1) tblstruct << "`MaxTargetLevel` int(10) unsigned NOT NULL default '0',\n";
-        oss << spell->SpellFamilyName << ",";
-        if (count == 1) tblstruct << "`SpellFamilyName` int(10) unsigned NOT NULL default '0',\n";
-
-        if (count == 1) tblstruct << "SpellFamilyFlags int(64) unsigned NOT NULL DEFAULT '0',";
-        oss << spell->SpellFamilyFlags << ",";
-
-
-        oss << spell->MaxAffectedTargets << ",";
-        if (count == 1) tblstruct << "`MaxAffectedTargets` int(10) unsigned NOT NULL default '0',\n";
-        oss << spell->DmgClass << ",";
-        if (count == 1) tblstruct << "`DmgClass` int(10) unsigned NOT NULL default '0',\n";
-
-        oss << spell->PreventionType;// << ",";
-        if (count == 1) tblstruct << "`PreventionType` int(10) unsigned NOT NULL default '0',\n";
-
-        if (curr >= 100)
-            curr = 0;
-    }
-    oss << ");\n\n-- Data END";
-    tblstruct << "PRIMARY KEY  (`Id`)\n";
-    tblstruct << ") ENGINE=MyISAM DEFAULT CHARSET=utf8 ROW_FORMAT=FIXED COMMENT='Spell.dbc entries';";
-
-    query = oss.str();
-    table  = tblstruct.str();
-    FILE* f = fopen("dbc_export.sql", "w");
-    if (!f)
-    {
-        sLog.outError("Impossible d'ouvrir le fichier en ecriture.");
-        return false;
-    }
-    fputs("-- Structure\n", f);
-    fputs(table.c_str(), f);
-    fputs("\n-- Fin structure\n", f);
-    fputs("-- Data\n\n", f);
-    fputs(query.c_str(), f);
-    fclose(f);
-    sLog.outString("%u sorts exportes en %u requetes.", count, nbQueries);
-    sLog.outString(table.c_str());
-    return true;
-}
-
-bool ChatHandler::HandleDbcExportSpellEffectsCommand(char *args)
-{
-    sLog.outString("Debut exportation des DBC");
-    uint32 uiExportOnlySpell = 0;
-    char* sSpellId = strtok((char*)args, " ");
-    if (sSpellId)
-        uiExportOnlySpell = uint32(atoi(sSpellId));
-
-    /* Spell */
-    std::string query = "";
-    std::string table = "";
-    std::stringstream  oss;
-    std::stringstream  tblstruct;
-    std::stringstream  fields;
-    uint32 count = 0;
-    uint32 curr = 0;
-    uint32 nbQueries = 0;
-    int loc = GetSessionDbcLocale();
-    std::string spellName = "";
-    std::string spellRank = "";
-
-    tblstruct << "DROP TABLE IF EXISTS spell_effect_mod;\n";
-    tblstruct << "CREATE TABLE spell_effect_mod (\n";
-
-    tblstruct << "`Id` int(10) unsigned NOT NULL default '0',\n";
-    fields << "Id";
-    tblstruct << "`EffectIndex` int(3) unsigned NOT NULL default '0',\n";
-    fields << "," << "EffectIndex";
-    tblstruct << "`Effect` int(3) unsigned NOT NULL default '0',\n";
-    fields << "," << "Effect";
-    tblstruct << "`EffectDieSides` int(10) NOT NULL default '0',\n";
-    fields << "," << "EffectDieSides";
-    tblstruct << "`EffectBaseDice` int(10) NOT NULL default '0',\n";
-    fields << "," << "EffectBaseDice";
-    tblstruct << "`EffectDicePerLevel` float NOT NULL default '0',\n";
-    fields << "," << "EffectDicePerLevel";
-    tblstruct << "`EffectRealPointsPerLevel` float NOT NULL default '0',\n";
-    fields << "," << "EffectRealPointsPerLevel";
-    tblstruct << "`EffectBasePoints` int(10) NOT NULL default '0',\n";
-    fields << "," << "EffectBasePoints";
-
-    tblstruct << "`EffectMechanic` int(10) unsigned NOT NULL default '0',\n";
-    fields << "," << "EffectMechanic";
-    tblstruct << "`EffectImplicitTargetA` int(10) unsigned NOT NULL default '0',\n";
-    fields << "," << "EffectImplicitTargetA";
-    tblstruct << "`EffectImplicitTargetB` int(10) unsigned NOT NULL default '0',\n";
-    fields << "," << "EffectImplicitTargetB";
-    tblstruct << "`EffectRadiusIndex` int(10) unsigned NOT NULL default '0',\n";
-    fields << "," << "EffectRadiusIndex";
-    tblstruct << "`EffectApplyAuraName` int(10) unsigned NOT NULL default '0',\n";
-    fields << "," << "EffectApplyAuraName";
-    tblstruct << "`EffectAmplitude` int(10) unsigned NOT NULL default '0',\n";
-    fields << "," << "EffectAmplitude";
-
-    tblstruct << "`EffectMultipleValue` float NOT NULL default '0',\n";
-    fields << "," << "EffectMultipleValue";
-    tblstruct << "`EffectChainTarget` int(10) unsigned NOT NULL default '0',\n";
-    fields << "," << "EffectChainTarget";
-    tblstruct << "`EffectItemType` int(10) unsigned NOT NULL default '0',\n";
-    fields << "," << "EffectItemType";
-    tblstruct << "`EffectMiscValue` int(10) NOT NULL default '0',\n";
-    fields << "," << "EffectMiscValue";
-#ifdef WOTLK
-    tblstruct << "`EffectMiscValueB` int(10) NOT NULL default '0',\n";
-    fields << "," << "EffectMiscValueB";
-#endif
-    tblstruct << "`EffectTriggerSpell` int(10) unsigned NOT NULL default '0',\n";
-    fields << "," << "EffectTriggerSpell";
-
-    tblstruct << "`EffectPointsPerComboPoint` float NOT NULL default '0',\n";
-    fields << "," << "EffectPointsPerComboPoint";
-#ifdef WOTLK
-    tblstruct << "`EffectSpellClassMask` int(10) unsigned NOT NULL default '0',\n";
-    fields << "," << "EffectSpellClassMask";
-#endif
-    fields << "," "Comment";
-    tblstruct << "PRIMARY KEY  (`Id`, `EffectIndex`)\n";
-    tblstruct << ") ENGINE=MyISAM DEFAULT CHARSET=utf8 ROW_FORMAT=FIXED COMMENT='Spell.dbc entries';";
-
-    for (uint32 id = 0; id < sSpellStore.GetNumRows(); id++)
-    {
-        if (uiExportOnlySpell && id != uiExportOnlySpell)
-            continue;
-
-        SpellEntry const *spell = sSpellMgr.GetSpellEntry(id);
-        if (!spell)
-            continue;
-
-        /* Spell Effects */
-        for (uint8 eff = 0; eff < MAX_SPELL_EFFECTS; ++eff)
-        {
-            if (!uiExportOnlySpell && spell->Effect[eff] == 0)
-                continue;
-
-            if (curr == 0)
-            {
-                // Premier
-                if (count != 0)
-                    oss << ";\n\n";
-
-                oss << "REPLACE INTO spell_effect_mod (" << fields.str() << ") VALUES\n";
-                nbQueries++;
-            }
-            else
-                oss << ",";
-
-            oss << "(";
-            oss << spell->Id << ",";
-            oss << uint32(eff) << ",";
-            oss << spell->Effect[eff] << ",";
-            oss << spell->EffectDieSides[eff] << ",";
-            oss << spell->EffectBaseDice[eff] << ",";
-            oss << "'" << spell->EffectDicePerLevel[eff] << "',";
-            oss << "'" << spell->EffectRealPointsPerLevel[eff] << "',";
-            oss << spell->EffectBasePoints[eff] << ",";
-
-            oss << spell->EffectMechanic[eff] << ",";
-            oss << spell->EffectImplicitTargetA[eff] << ",";
-            oss << spell->EffectImplicitTargetB[eff] << ",";
-
-            oss << spell->EffectRadiusIndex[eff] << ",";
-            oss << spell->EffectApplyAuraName[eff] << ",";
-            oss << spell->EffectAmplitude[eff] << ",";
-
-            oss << spell->EffectMultipleValue[eff] << ",";
-            oss << spell->EffectChainTarget[eff] << ",";
-            oss << spell->EffectItemType[eff] << ",";
-            oss << spell->EffectMiscValue[eff] << ",";
-
-#ifdef WOTLK
-            oss << spell->EffectMiscValueB[eff] << ",";
-#endif
-            oss << spell->EffectTriggerSpell[eff] << ",";
-
-            oss << "'" << spell->EffectPointsPerComboPoint[eff] << "'";
-
-#ifdef WOTLK
-            oss << "," << spell->EffectSpellClassMask[eff] << "";
-#endif
-            if (uiExportOnlySpell)
-                oss << ",'Ajoute automatiquement'";
-
-            oss << "";
-            oss << ")";
-            curr++;
-            count++;
-        }
-
-        if (curr >= 100)
-            curr = 0;
-    }
-    // Exportation de seulement un sort.
-    if (uiExportOnlySpell)
-    {
-        sLog.outString("%s", oss.str().c_str());
-        SendSysMessage(" -> OK");
-        return true;
-    }
-    oss << ";\n\n-- Data END";
-
-    query  = oss.str();
-    table  = tblstruct.str();
-    FILE* f = fopen("spell_effects.sql", "w");
-    if (!f)
-    {
-        sLog.outError("Impossible d'ouvrir le fichier en ecriture.");
-        return false;
-    }
-    fputs("-- Structure\n", f);
-    fputs(table.c_str(), f);
-    fputs("\n-- Fin structure\n", f);
-    fputs("-- Data\n\n", f);
-    fputs(query.c_str(), f);
-    fclose(f);
-    sLog.outString("%u effets exportes en %u requetes.", count, nbQueries);
-    sLog.outString(table.c_str());
-    return true;
-}
 
 bool ChatHandler::HandleHonorDebugScoresCommand(char *args)
 {
@@ -635,6 +317,112 @@ bool ChatHandler::HandleCinematicListWpCommand(char *args)
     // Exemple :
     // .cine listwp 41
     //
+    return true;
+}
+
+bool ChatHandler::HandleEscortShowWpCommand(char *args)
+{
+    DEBUG_LOG("DEBUG: HandleEscortShowWpCommand");
+
+    auto waypointInfo = ObjectMgr::GetCreatureTemplate(VISUAL_WAYPOINT);
+    if (!waypointInfo || waypointInfo->GetHighGuid() != HIGHGUID_UNIT)
+        return false; // must exist as normal creature in mangos.sql 'creature_template'
+
+    const CreatureInfo *cInfo = nullptr;
+    const Creature *pCreature = getSelectedCreature();
+    uint32 cr_id;
+
+    // optional number or [name] Shift-click form |color|Hcreature_entry:creature_id|h[name]|h|r
+    if (*args && ExtractUint32KeyFromLink(&args, "Hcreature_entry", cr_id))
+        cInfo = ObjectMgr::GetCreatureTemplate(cr_id);
+    else if (pCreature)
+        cInfo = pCreature->GetCreatureInfo();
+
+    if (!cInfo)
+    {
+        if (cr_id)
+            PSendSysMessage(LANG_COMMAND_INVALIDCREATUREID, cr_id);
+        else
+            SendSysMessage(LANG_SELECT_CREATURE);
+
+        SetSentErrorMessage(true);
+        return false;
+    }
+
+    const auto pPlayer = m_session->GetPlayer();
+    auto map = pPlayer->GetMap();
+
+    auto &scriptPoints = sScriptMgr.GetPointMoveList(cInfo->Entry);
+
+    if (scriptPoints.empty())
+    {
+        PSendSysMessage(LANG_WAYPOINT_NOTFOUND, cInfo->Entry);
+        SetSentErrorMessage(true);
+        return false;
+    }
+
+    for (const auto &wp : scriptPoints)
+    {
+        CreatureCreatePos pos{map, wp.fX, wp.fY, wp.fZ, pPlayer->GetOrientation()};
+        Creature* wpCreature = new Creature;
+
+        if (!wpCreature->Create(map->GenerateLocalLowGuid(HIGHGUID_UNIT), pos, waypointInfo))
+        {
+            PSendSysMessage(LANG_WAYPOINT_VP_NOTCREATED, VISUAL_WAYPOINT);
+            delete wpCreature;
+            return false;
+        }
+
+        wpCreature->SetVisibility(VISIBILITY_OFF);
+
+        wpCreature->SaveToDB(map->GetId());
+        wpCreature->LoadFromDB(wpCreature->GetGUIDLow(), map);
+        map->Add(wpCreature);
+    }
+
+    return true;
+}
+
+bool ChatHandler::HandleEscortHideWpCommand(char* /*args*/)
+{
+    DEBUG_LOG("DEBUG: HandleEscortHideWpCommand");
+
+    auto map = m_session->GetPlayer()->GetMap();
+
+    std::unique_ptr<QueryResult> result(WorldDatabase.PQuery("SELECT guid FROM creature WHERE id=%u AND map=%u", VISUAL_WAYPOINT, map->GetId()));
+    if (!result)
+    {
+        SendSysMessage(LANG_WAYPOINT_VP_NOTFOUND);
+        SetSentErrorMessage(true);
+        return false;
+    }
+    bool hasError = false;
+    do
+    {
+        Field *fields = result->Fetch();
+        uint32 wpGuid = fields[0].GetUInt32();
+        Creature* pCreature = map->GetCreature(ObjectGuid(HIGHGUID_UNIT, VISUAL_WAYPOINT, wpGuid));
+        if (!pCreature)
+        {
+            hasError = true;
+            WorldDatabase.PExecuteLog("DELETE FROM creature WHERE guid=%u", wpGuid);
+        }
+        else
+        {
+            pCreature->DeleteFromDB();
+            pCreature->AddObjectToRemoveList();
+        }
+    } while (result->NextRow());
+
+    if (hasError)
+    {
+        PSendSysMessage(LANG_WAYPOINT_TOOFAR1);
+        PSendSysMessage(LANG_WAYPOINT_TOOFAR2);
+        PSendSysMessage(LANG_WAYPOINT_TOOFAR3);
+    }
+
+    SendSysMessage(LANG_WAYPOINT_VP_ALLREMOVED);
+
     return true;
 }
 
@@ -1227,6 +1015,55 @@ bool ChatHandler::HandleNpcGroupAddCommand(char* args)
     return true;
 }
 
+bool ChatHandler::HandleNpcGroupAddRelCommand(char* args)
+{
+    if (!*args)
+        return false;
+
+    Creature* target = getSelectedCreature();
+    SetSentErrorMessage(true);
+
+    if (!target)
+    {
+        SendSysMessage(LANG_SELECT_CREATURE);
+        return false;
+    }
+
+    uint32 leaderGuidCounter = 0;
+    uint32 options = OPTION_FORMATION_MOVE | OPTION_AGGRO_TOGETHER | OPTION_EVADE_TOGETHER | OPTION_RESPAWN_TOGETHER;
+    if (!ExtractUInt32(&args, leaderGuidCounter))
+        return false;
+    ExtractUInt32(&args, options);
+    Creature* leader = target->GetMap()->GetCreature(CreatureGroupsManager::ConvertDBGuid(leaderGuidCounter));
+    if (!leader)
+    {
+        PSendSysMessage("Leader not found");
+        return false;
+    }
+    if (target->GetCreatureGroup())
+    {
+        SendSysMessage("Selected creature is already member of a group.");
+        return false;
+    }
+
+    bool dbsave = target->HasStaticDBSpawnData();
+    //Player *chr = m_session->GetPlayer();
+    float angle = target->GetAngle(leader);//(chr->GetAngle(target) - target->GetOrientation()) + 2 * M_PI_F;
+    float dist = sqrtf(pow(leader->GetPositionX() - target->GetPositionX(), int(2)) + pow(leader->GetPositionY() - target->GetPositionY(), int(2)));
+
+    CreatureGroup* group = leader->GetCreatureGroup();
+    if (!group)
+        group = new CreatureGroup(leader->GetObjectGuid());
+    group->AddMember(target->GetObjectGuid(), dist, angle, options);
+    target->SetCreatureGroup(group);
+    leader->SetCreatureGroup(group);
+    target->GetMotionMaster()->Initialize();
+    if (dbsave)
+        group->SaveToDb();
+    PSendSysMessage("Group added for creature %u. Leader %u, Angle %f, Dist %f", target->GetGUIDLow(), leader->GetGUIDLow(), angle, dist);
+    return true;
+}
+
 bool ChatHandler::HandleNpcGroupDelCommand(char *args)
 {
     Creature *target = getSelectedCreature();
@@ -1249,6 +1086,42 @@ bool ChatHandler::HandleNpcGroupDelCommand(char *args)
     g->SaveToDb();
     target->SetCreatureGroup(NULL);
     target->GetMotionMaster()->Initialize();
+    return true;
+}
+
+bool ChatHandler::HandleNpcGroupLinkCommand(char * args)
+{
+    if (!*args)
+        return false;
+
+    Creature* target = getSelectedCreature();
+    SetSentErrorMessage(true);
+
+    if (!target)
+    {
+        SendSysMessage(LANG_SELECT_CREATURE);
+        return false;
+    }
+
+    uint32 options;
+    uint32 leaderGuidCounter = 0;
+    if (!ExtractUInt32(&args, leaderGuidCounter))
+        return false;
+    
+    ExtractUInt32(&args, options);
+    
+    Creature* leader = target->GetMap()->GetCreature(CreatureGroupsManager::ConvertDBGuid(leaderGuidCounter));
+    if (!leader)
+    {
+        PSendSysMessage("Leader not found");
+        return false;
+    }
+    
+    WorldDatabase.PExecute("DELETE FROM creature_linking WHERE guid=%u", target->GetGUIDLow());
+        WorldDatabase.PExecute("INSERT INTO creature_linking SET guid=%u, master_guid=%u, flag='%u'",
+            target->GetGUIDLow(), leaderGuidCounter, options);
+
+    PSendSysMessage("creature_link for creature %u. Leader %u", target->GetGUIDLow(), leader->GetGUIDLow());
     return true;
 }
 
@@ -1549,7 +1422,7 @@ bool ChatHandler::HandleSpellInfosCommand(char *args)
     PSendSysMessage("Attributes0x%x:Ex[0x%x:0x%x:0x%x:0x%x]", pSpell->Attributes, pSpell->AttributesEx, pSpell->AttributesEx2, pSpell->AttributesEx3, pSpell->AttributesEx4);
     PSendSysMessage("RequiresSpellFocus%u:StackAmount%u", pSpell->RequiresSpellFocus, pSpell->StackAmount);
     PSendSysMessage("SpellIconID%u:SpellVisual%u:activeIconID%u", pSpell->SpellIconID, pSpell->SpellVisual, pSpell->activeIconID);
-    PSendSysMessage("SpellFamilyName%u:SpellFamilyFlags0x%llx", pSpell->SpellFamilyName, pSpell->SpellFamilyFlags.Flags);
+    PSendSysMessage("SpellFamilyName%u:SpellFamilyFlags0x%llx", pSpell->SpellFamilyName, pSpell->SpellFamilyFlags);
     PSendSysMessage("MaxTargetLevel%u:DmgClass%u:rangeIndex%u", pSpell->MaxTargetLevel, pSpell->DmgClass, pSpell->rangeIndex);
     PSendSysMessage("procChance%u:procFlags0x%x:procCharges%u", pSpell->procChance, pSpell->procFlags, pSpell->procCharges);
     PSendSysMessage("InterruptFlags0x%x:AuraInterruptFlags0x%x:PreventionType%x:spellLevel%u", pSpell->InterruptFlags, pSpell->AuraInterruptFlags, pSpell->PreventionType, pSpell->spellLevel);
@@ -1572,7 +1445,7 @@ bool ChatHandler::HandleSpellSearchCommand(char *args)
     PSendSysMessage("* Results for SpellFamilyName %u and SpellFamilyFlags & 0x%x", familyName, familyFlags);
     LocaleConstant loc = GetSessionDbcLocale();
     SpellEntry const* pSpell = NULL;
-    for (uint32 id = 0; id < sSpellStore.GetNumRows(); ++id)
+    for (uint32 id = 0; id < sSpellMgr.GetMaxSpellId(); ++id)
     {
         pSpell = sSpellMgr.GetSpellEntry(id);
         if (!pSpell)
@@ -2275,6 +2148,10 @@ bool ChatHandler::HandleDebugMoveFlagsCommand(char* args)
         unit->m_movementInfo.moveFlags = flags;
         unit->SendHeartBeat(true);
     }
+    else
+    {
+        PSendSysMessage("moveFlags = 0x%x", unit->GetUnitMovementFlags());
+    }
     return true;
 }
 
@@ -2649,7 +2526,7 @@ bool ChatHandler::HandleRecupCommand(char* c)
             fields = recupReputations->Fetch();
             uint32 faction  = fields[0].GetUInt32();
             uint32 standing  = fields[1].GetUInt32();
-            FactionEntry const *factionEntry = sFactionStore.LookupEntry(faction);
+            FactionEntry const *factionEntry = sObjectMgr.GetFactionEntry(faction);
             if (!factionEntry)
                 continue;
             if (factionEntry->reputationListID < 0)
@@ -3194,13 +3071,6 @@ bool ChatHandler::HandleReloadCreatureModelInfo(char*)
     return true;
 }
 
-bool ChatHandler::HandleReloadNostalriusStrings(char*)
-{
-    sObjectMgr.LoadNostalriusStrings();
-    SendSysMessage(">> Table `nostalrius_string` reloaded.");
-    return true;
-}
-
 bool ChatHandler::HandleReloadIPBanList(char*)
 {
     sAccountMgr.LoadIPBanList();
@@ -3212,5 +3082,19 @@ bool ChatHandler::HandleReloadAccountBanList(char*)
 {
     sAccountMgr.LoadAccountBanList();
     SendSysMessage(">> Table `account_banned` reloaded.");
+    return true;
+}
+
+bool ChatHandler::HandleReloadInstanceBuffRemoval(char*)
+{
+    sAuraRemovalMgr.LoadFromDB();
+    SendSysMessage(">> Table `instance_buff_removal` reloaded.");
+    return true;
+}
+
+bool ChatHandler::HandleReloadPetitions(char*)
+{
+    sGuildMgr.LoadPetitions();
+    SendSysMessage(">> Table `petition` reloaded.");
     return true;
 }

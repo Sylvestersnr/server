@@ -420,7 +420,8 @@ struct npc_weegli_blastfuseAI : public ScriptedAI
                         pBoom->UseDoorOrButton(explosiveGUID);
                     }
                     uint64 EndDoorGUID = pInstance->GetData64(GO_END_DOOR);
-                    pInstance->DoUseDoorOrButton(EndDoorGUID);
+                    pInstance->DoUseDoorOrButton(EndDoorGUID, 0, true);
+                    pInstance->SetData(EVENT_END_DOOR, DONE);
                     if (Creature* pChief = m_creature->GetMap()->GetCreature(pInstance->GetData64(ENTRY_UKORZ)))
                         DoScriptText(SAY_CHIEF_UKORZ_DOOR, pChief);
                     RunAfterExplosion2();
@@ -687,15 +688,19 @@ struct ZumRahAI : public ScriptedAI
             GetGameObjectListWithEntryInGrid(m_GraveList, m_creature, 128403, 100.0f);
             for (std::list<GameObject*>::iterator it = m_GraveList.begin(); it != m_GraveList.end(); ++it)
             {
-
-                if ((*it)->GetGoState() != 1 || (*it)->getLootState() != 1 || (*it)->GetRespawnTime() != 0)
+                GameObject *go = *it;
+                if (go->GetGoState() != 1 || go->getLootState() != 1 || go->GetRespawnTime() != 0)
                     continue;
 
-                (*it)->UseDoorOrButton((*it)->GetGUID());
-                Creature* undead = m_creature->SummonCreature(7286, (*it)->GetPositionX(),
-                                   (*it)->GetPositionY(),
-                                   (*it)->GetPositionZ(), 5.93f, TEMPSUMMON_CORPSE_DESPAWN, 60000);
-                undead->AI()->AttackStart(m_creature->getVictim());
+                go->UseDoorOrButton(go->GetGUID());
+                if (Creature* undead = m_creature->SummonCreature(7286, go->GetPositionX(),
+                    go->GetPositionY(),
+                    go->GetPositionZ(), 5.93f, TEMPSUMMON_CORPSE_DESPAWN, 60000))
+                {
+                    if (undead->AI())
+                        undead->AI()->AttackStart(m_creature->getVictim());
+                }
+
                 m_uiGraveTimer = 18000;
                 zombieNumber++;
                 if (zombieNumber == 2)

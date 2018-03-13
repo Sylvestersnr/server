@@ -31,7 +31,7 @@ enum
     NPC_STUDENT                                     = 10475,
     NPC_MARDUK_BLACKPOOL                            = 10433,
 
-    VECTUS_SPEECH_GAMBIT_EVENT_START                = NOST_TEXT(117),
+    VECTUS_SPEECH_GAMBIT_EVENT_START                = 6883,
 
     GO_DAWN_S_GAMBIT                                = 177304,
 
@@ -128,7 +128,7 @@ struct boss_vectusAI : public ScriptedAI
                     m_creature->GetCreatureListWithEntryInGrid(creatures, NPC_STUDENT, 100.0f);
                     for (std::list<Creature*>::iterator it = creatures.begin(); it != creatures.end(); ++it)
                     {
-                        (*it)->CastSpell((*it), SPELL_VIEWING_ROOM_STUDENT_TRANSFORM_EFFECT, false);
+                        (*it)->CastSpell((*it), SPELL_VIEWING_ROOM_STUDENT_TRANSFORM_EFFECT, true);
                         if (CreatureGroup* myGroup = (*it)->GetCreatureGroup())
                         {
                             myGroup->RemoveMember((*it)->GetGUID());

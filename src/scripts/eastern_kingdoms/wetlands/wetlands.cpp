@@ -33,11 +33,6 @@ EndContentData */
 // Author: Kampeador
 //-----------------------------------------------------------------------------
 
-// On elysium core, JustRespawned() isn't called on spawn. Only on respawn.
-// if it is safe to reduce a hardcoded 2500ms delay before the first waypoint to 750ms-1000ms,
-// then this and setDelayBeforeTheFirstWaypoint(750) function can be removed.
-#define ELYSIUM_CORE_JUST_RESPAWNED
-
 enum
 {
     // ids from "script_texts" table
@@ -107,7 +102,7 @@ public:
         // slowing poison timer
         if (m_slowingPoisonTimer < uiDiff)
         {
-            CanCastResult castResult = DoCastSpellIfCan(m_creature->getVictim(), SPELL_SLOWING_POISON, CAST_AURA_NOT_PRESENT);
+            CanCastResult castResult = DoCastSpellIfCan(m_creature->getVictim(), SPELL_SLOWING_POISON, CF_AURA_NOT_PRESENT);
             if (castResult == CAST_OK)
                 m_slowingPoisonTimer = urand(8400, 15300);
         }
@@ -181,16 +176,12 @@ struct npc_tapoke_slim_jahnAI : public npc_escortAI
     uint32 m_nextPhaseDelay;
     // missing diplomat quest event phase index
     uint32 m_mdDialogPhase;
-    // Slim's friend
-    Creature* m_slimsFriend;
     // pummel spell timer
     uint32 m_pummelTimer;
     // respawn delay from DB
     uint32 m_respawnDelay;
 
-#ifdef ELYSIUM_CORE_JUST_RESPAWNED  
     bool m_justCreated;
-#endif
 
     npc_tapoke_slim_jahnAI(Creature* pCreature) : npc_escortAI(pCreature)
     {
@@ -203,11 +194,7 @@ struct npc_tapoke_slim_jahnAI : public npc_escortAI
         // backup the original respawn delay
         m_respawnDelay = m_creature->GetRespawnDelay();
 
-        m_slimsFriend = nullptr;
-
-#ifdef ELYSIUM_CORE_JUST_RESPAWNED
         m_justCreated = true;
-#endif
 
         Reset();
     }
@@ -221,22 +208,11 @@ struct npc_tapoke_slim_jahnAI : public npc_escortAI
     }
 
     // This function is also called when NPC runs away from player/group range.
-    void JustDied(Unit*) override
+    void JustDied(Unit* pKiller)
     {
-        if (HasEscortState(STATE_ESCORT_ESCORTING))
-        {
-            // Quest will also fail if Tapoke "Slim" Jahn ran away from player / group range.
-            Player* player = GetPlayerForEscort();
-            if (player)
-                player->GroupEventFailHappens(QUEST_MISSING_DIPLOMAT_PART11);
-
-            // remove slim's friend
-            if (m_slimsFriend)
-            {
-                static_cast<TemporarySummon*>(m_slimsFriend)->UnSummon();
-                m_slimsFriend = nullptr;
-            }
-        }
+        DespawnFriendIfExists();
+        // Let escort ai do all checks for players and quests.
+        npc_escortAI::JustDied(pKiller);
     }
 
     void JustRespawned()
@@ -272,31 +248,22 @@ struct npc_tapoke_slim_jahnAI : public npc_escortAI
             if (player)
                 player->GroupEventFailHappens(QUEST_MISSING_DIPLOMAT_PART11);
 
-            m_creature->ForcedDespawn(5000);
+            DespawnFriendIfExists();
         }break;
         }
     }
 
     void Aggro(Unit* pWho)
     {
-        if (HasEscortState(STATE_ESCORT_ESCORTING))
-        {
-            // This function is also called when Tapoke Slim Jahn has been defeated!
-            if (!m_slimsFriend)
-            {
-                // calls a friend
-                CanCastResult castResult = DoCastSpellIfCan(m_creature, SPELL_CALL_FRIENDS);
-                if (castResult == CAST_OK)
-                {
-                    DoScriptText(SAY_PROGRESS_1_TAP, m_creature);
-                }
-            }
-        }
-    }
+        // This function is also called when Tapoke Slim Jahn has been defeated!
+        if (Pet *slimsFriend = m_creature->FindGuardianWithEntry(NPC_SLIMS_FRIEND))
+            return;
 
-    void JustSummoned(Creature* pSummoned)
-    {
-        m_slimsFriend = pSummoned;
+        // calls a friend
+        CanCastResult castResult = DoCastSpellIfCan(m_creature, SPELL_CALL_FRIENDS);
+        // He says this phrase only during the event
+        if (HasEscortState(STATE_ESCORT_ESCORTING) && (castResult == CAST_OK))
+            DoScriptText(SAY_PROGRESS_1_TAP, m_creature);
     }
 
     void AttackedBy(Unit* pAttacker)
@@ -309,13 +276,12 @@ struct npc_tapoke_slim_jahnAI : public npc_escortAI
 
     void UpdateEscortAI(const uint32 uiDiff)
     {
-#ifdef ELYSIUM_CORE_JUST_RESPAWNED
         if (m_justCreated)
         {
             m_justCreated = false;
             JustRespawned();
         }
-#endif
+
         if (m_isBeaten)
         {
             if (m_nextPhaseDelay < uiDiff)
@@ -332,23 +298,18 @@ struct npc_tapoke_slim_jahnAI : public npc_escortAI
                     {
                         m_creature->SetFacingToObject(player);
 
-                        if (m_slimsFriend)
+                        if (Pet *slimsFriend = m_creature->FindGuardianWithEntry(NPC_SLIMS_FRIEND))
                         {
-                            if (m_slimsFriend->isAlive())
-                                m_slimsFriend->SetFacingToObject(player);
+                            if (slimsFriend->isAlive())
+                                slimsFriend->SetFacingToObject(player);
                         }
-
                     }
                     m_nextPhaseDelay = 2000;
                 }break;
                 case 1: // Say_0
                 {
                     // despawn Slims friend
-                    if (m_slimsFriend)
-                    {
-                        static_cast<TemporarySummon*>(m_slimsFriend)->UnSummon();
-                        m_slimsFriend = nullptr;
-                    }
+                    DespawnFriendIfExists();
 
                     m_creature->HandleEmote(EMOTE_ONESHOT_BEG);
                     DoScriptText(SAY_PROGRESS_3_TAP, m_creature);
@@ -421,37 +382,31 @@ struct npc_tapoke_slim_jahnAI : public npc_escortAI
 
             m_isBeaten = true;
 
-            if (m_slimsFriend)
+            if (Pet* slimsFriend = m_creature->FindGuardianWithEntry(NPC_SLIMS_FRIEND))
             {
-                if (m_slimsFriend->isAlive())
-                {
-                    // stop combat
-                    m_slimsFriend->CombatStop(true);
-                    // remove all dots, etc
-                    m_slimsFriend->RemoveAllAuras();
-                    // clean thread list
-                    m_slimsFriend->DeleteThreatList();
-                    // make him unattackable
-                    m_slimsFriend->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_PASSIVE);
+                slimsFriend->CombatStop(true);
+                slimsFriend->RemoveAllAuras();
+                slimsFriend->DeleteThreatList();
+                slimsFriend->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_PASSIVE);
 
-                    DoScriptText(SAY_PROGRESS_2_FRI, m_slimsFriend);
-                }
+                DoScriptText(SAY_PROGRESS_2_FRI, slimsFriend);
             }
 
-            // pause escort
             SetEscortPaused(true);
 
-            // prevent an inconsistent behavior
             m_creature->setFaction(FACTION_FRIENDLY_TO_ALL);
-            // remove all dots, etc
             m_creature->RemoveAllAuras();
-            // clean thread list
             m_creature->DeleteThreatList();
-            // stop combat
             m_creature->CombatStop(true);
 
             SetRun(false);
         }
+    }
+
+    void DespawnFriendIfExists()
+    {
+        if (Pet* slimsFriend = m_creature->FindGuardianWithEntry(NPC_SLIMS_FRIEND))
+            slimsFriend->Unsummon(PET_SAVE_AS_DELETED, m_creature);
     }
 };
 
@@ -479,6 +434,9 @@ bool QuestAccept_npc_mikhail(Player* pPlayer, Creature* pCreature, const Quest* 
         npc_tapoke_slim_jahnAI* tapokeSlimJahnAI = dynamic_cast<npc_tapoke_slim_jahnAI*>(pSlim->AI());
         if (tapokeSlimJahnAI)
         {
+            // despawn Slim's friend if he was summoned previously(attacked by the opposite faction)
+            tapokeSlimJahnAI->DespawnFriendIfExists();
+
             // start escort
             tapokeSlimJahnAI->Start(false, pPlayer->GetGUID(), pQuest);
         }

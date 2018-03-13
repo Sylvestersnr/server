@@ -134,6 +134,7 @@ set (SCRIPTS_SRCS
 	eastern_kingdoms/eastern_plaguelands/stratholme/boss_postmaster_malown.cpp
 	eastern_kingdoms/eastern_plaguelands/stratholme/boss_ramstein_the_gorger.cpp
 	eastern_kingdoms/eastern_plaguelands/stratholme/boss_timmy_the_cruel.cpp
+	eastern_kingdoms/eastern_plaguelands/stratholme/boss_atiesh.cpp
 	eastern_kingdoms/eastern_plaguelands/stratholme/instance_stratholme.cpp
 	eastern_kingdoms/eastern_plaguelands/stratholme/stratholme.cpp
 	eastern_kingdoms/elwynn_forest/elwynn_forest.cpp
@@ -276,7 +277,6 @@ set (SCRIPTS_SRCS
 	PrecompiledHeaders/scriptPCH.cpp
 	world/areatrigger_scripts.cpp
 	world/boss_anachronos.cpp
-	world/boss_azuregos.cpp
 	world/boss_lord_kazzak.cpp
 	world/elemental_invasions.cpp
 	world/event_scourge_invasion.cpp
@@ -288,6 +288,9 @@ set (SCRIPTS_SRCS
 	world/spell_scripts.cpp
 	world/totems.cpp
 	world/world_event_naxxramas.cpp
+    world/world_event_naxxramas.h
+    world/world_event_wareffort.cpp
+    world/world_event_wareffort.h
 	world/dragons_of_nightmare/boss_dragon_of_nightmare.cpp
 	world/dragons_of_nightmare/boss_emeriss.cpp
 	world/dragons_of_nightmare/boss_lethon.cpp
@@ -329,6 +332,7 @@ include_directories(
   ${CMAKE_SOURCE_DIR}/src/game/Group
   ${CMAKE_SOURCE_DIR}/src/game/Guild
   ${CMAKE_SOURCE_DIR}/src/game/Handlers
+  ${CMAKE_SOURCE_DIR}/src/game/LFG
   ${CMAKE_SOURCE_DIR}/src/game/Mail
   ${CMAKE_SOURCE_DIR}/src/game/Maps
   ${CMAKE_SOURCE_DIR}/src/game/Maps/Pool

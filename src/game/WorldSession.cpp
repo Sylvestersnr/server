@@ -678,12 +678,16 @@ void WorldSession::LogoutPlayer(bool Save)
             _player->TeleportToHomebind();
             //this is a bad place to call for far teleport because we need player to be in world for successful logout
             //maybe we should implement delayed far teleport logout?
+            sMapMgr.ExecuteSingleDelayedTeleport(_player);
         }
 
         // FG: finish pending transfers after starting the logout
         // this should fix players being able to logout and login back with full hp at death position
         while (_player->IsBeingTeleportedFar())
+        {
             HandleMoveWorldportAckOpcode();
+            sMapMgr.ExecuteSingleDelayedTeleport(_player); // Execute chain teleport if there are some
+        }
 
         // Refresh apres ca
         inWorld = _player->IsInWorld() && _player->FindMap();
@@ -731,6 +735,8 @@ void WorldSession::LogoutPlayer(bool Save)
                     removedFromMap = _player->TeleportTo(at->target_mapId, at->target_X, at->target_Y, at->target_Z, _player->GetOrientation());
                 else
                     removedFromMap = _player->TeleportToHomebind();
+
+                sMapMgr.ExecuteSingleDelayedTeleport(_player);
             }
         }
 
@@ -753,6 +759,9 @@ void WorldSession::LogoutPlayer(bool Save)
         ///- Send update to group
         if (Group* group = _player->GetGroup())
             group->UpdatePlayerOnlineStatus(_player, false);
+
+        ///- Update cached data at logout
+        sObjectMgr.UpdatePlayerCache(_player);
 
         ///- Remove the player from the world
         // the player may not be in the world when logging out

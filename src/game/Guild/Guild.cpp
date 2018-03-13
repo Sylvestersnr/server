@@ -101,6 +101,25 @@ Guild::~Guild()
 {
 }
 
+bool Guild::Create(Petition* petition, Player* leader)
+{
+    if (!Create(leader, petition->GetName()))
+        return false;
+
+    PetitionSignatureList signatures = petition->GetSignatureList();
+    for (auto iter = signatures.cbegin(); iter != signatures.cend(); ++iter)
+    {
+        PetitionSignature* signature = *iter;
+
+        if (signature->GetSignatureGuid().IsEmpty())
+            continue;
+
+        AddMember(signature->GetSignatureGuid(), GetLowestRank());
+    }
+
+    return true;
+}
+
 bool Guild::Create(Player* leader, std::string gname)
 {
     if (sGuildMgr.GetGuildByName(gname))
@@ -564,9 +583,12 @@ void Guild::BroadcastToGuild(WorldSession *session, const std::string& msg, uint
 
         for (MemberList::const_iterator itr = members.begin(); itr != members.end(); ++itr)
         {
+            if (!HasRankRight(itr->second.RankId, GR_RIGHT_GCHATLISTEN))
+                continue;
+
             MasterPlayer *pl = ObjectAccessor::FindMasterPlayer(ObjectGuid(HIGHGUID_PLAYER, itr->first));
 
-            if (pl && pl->GetSession() && HasRankRight(pl->GetRank(), GR_RIGHT_GCHATLISTEN) && !pl->GetSocial()->HasIgnore(session->GetMasterPlayer()->GetObjectGuid()))
+            if (pl && pl->GetSession() && !pl->GetSocial()->HasIgnore(session->GetMasterPlayer()->GetObjectGuid()))
                 pl->GetSession()->SendPacket(&data);
         }
     }
@@ -576,14 +598,17 @@ void Guild::BroadcastToOfficers(WorldSession *session, const std::string& msg, u
 {
     if (session && session->GetMasterPlayer() && HasRankRight(session->GetMasterPlayer()->GetRank(), GR_RIGHT_OFFCHATSPEAK))
     {
+        WorldPacket data;
+        ChatHandler::FillMessageData(&data, session, CHAT_MSG_OFFICER, language, msg.c_str());
+
         for (MemberList::const_iterator itr = members.begin(); itr != members.end(); ++itr)
         {
-            WorldPacket data;
-            ChatHandler::FillMessageData(&data, session, CHAT_MSG_OFFICER, language, msg.c_str());
+            if (!HasRankRight(itr->second.RankId, GR_RIGHT_OFFCHATLISTEN))
+                continue;
 
             MasterPlayer *pl = ObjectAccessor::FindMasterPlayer(ObjectGuid(HIGHGUID_PLAYER, itr->first));
 
-            if (pl && pl->GetSession() && HasRankRight(pl->GetRank(), GR_RIGHT_OFFCHATLISTEN) && !pl->GetSocial()->HasIgnore(session->GetMasterPlayer()->GetObjectGuid()))
+            if (pl && pl->GetSession() && !pl->GetSocial()->HasIgnore(session->GetMasterPlayer()->GetObjectGuid()))
                 pl->GetSession()->SendPacket(&data);
         }
     }
@@ -762,7 +787,7 @@ void Guild::Roster(WorldSession *session /*= NULL*/)
 
 void Guild::Query(WorldSession *session)
 {
-    WorldPacket data(SMSG_GUILD_QUERY_RESPONSE, (8 * 32 + 200)); // we can only guess size
+    WorldPacket data(SMSG_GUILD_QUERY_RESPONSE, (4 + 48 + 10 * 32 + 5 * 4)); // guess size; max: name(96), rankname(64)
 
     data << uint32(m_Id);
     data << m_Name;

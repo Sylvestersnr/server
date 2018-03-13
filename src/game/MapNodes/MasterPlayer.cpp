@@ -57,8 +57,10 @@ void MasterPlayer::LoadPlayer(Player* player)
 
 void MasterPlayer::SaveToDB()
 {
+    CharacterDatabase.BeginTransaction(GetGUIDLow());
     SaveActions();
     SaveMails();
+    CharacterDatabase.CommitTransaction();
 }
 
 void MasterPlayer::Update()
@@ -211,7 +213,7 @@ void MasterPlayer::UpdateNextMailTimeAndUnreads()
             if (!m_nextMailDelivereTime || m_nextMailDelivereTime > (*itr)->deliver_time)
                 m_nextMailDelivereTime = (*itr)->deliver_time;
         }
-        else if (((*itr)->checked & MAIL_CHECK_MASK_READ) == 0)
+        else if (((*itr)->checked & MAIL_CHECK_MASK_READ) == 0 && cTime < (*itr)->expire_time)
             ++unReadMails;
     }
 }

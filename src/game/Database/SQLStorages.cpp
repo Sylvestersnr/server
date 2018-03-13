@@ -24,8 +24,8 @@
 #include "Database/SQLStorageImpl.h"
 #include "Database/DatabaseEnv.h"
 
-const char CreatureInfosrcfmt[] = "iiiiiiissiiiiiiiiiiifffiffiifiiiiiiiiiiffiiiiiiiiiiiiiiiiiiisiiilliiiiiis";
-const char CreatureInfodstfmt[] = "iiiiiiissiiiiiiiiiiifffiffiifiiiiiiiiiiffiiiiiiiiiiiiiiiiiiisiiilliiiiiii";
+const char CreatureInfosrcfmt[] = "iiiiiiissiiiiiiiiiiifffiffiifiiiiiiiiiiffiiiiiiiiiiiiiiiiiiiisiiilliiiiiis";
+const char CreatureInfodstfmt[] = "iiiiiiissiiiiiiiiiiifffiffiifiiiiiiiiiiffiiiiiiiiiiiiiiiiiiiisiiilliiiiiii";
 const char CreatureDataAddonInfofmt[] = "iiibbiis";
 const char CreatureModelfmt[] = "iffbii";
 const char CreatureInfoAddonInfofmt[] = "iiibbiis";
@@ -38,8 +38,8 @@ const char ItemPrototypedstfmt[] = "iiisiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii
 const char PageTextfmt[] = "isi";
 const char MapEntrysrcfmt[] = "iiiiiiiiiffss";
 const char MapEntrydstfmt[] = "iiiiiiiiiffsi";
-const char ConditionsSrcFmt[] = "iiii";
-const char ConditionsDstFmt[] = "iiii";
+const char ConditionsSrcFmt[] = "iiiii";
+const char ConditionsDstFmt[] = "iiiii";
 const char AreaEntryfmt[] = "iiiiiisii";
 
 SQLStorage sCreatureStorage(CreatureInfosrcfmt, CreatureInfodstfmt, "entry", "creature_template");

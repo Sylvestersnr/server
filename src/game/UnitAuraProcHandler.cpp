@@ -49,7 +49,7 @@ pAuraProcHandler AuraProcHandler[TOTAL_AURAS] =
     &Unit::HandleNULLProc,                                  // 10 SPELL_AURA_MOD_THREAT
     &Unit::HandleNULLProc,                                  // 11 SPELL_AURA_MOD_TAUNT
     &Unit::HandleNULLProc,                                  // 12 SPELL_AURA_MOD_STUN
-    &Unit::HandleNULLProc,                                  // 13 SPELL_AURA_MOD_DAMAGE_DONE
+    &Unit::HandleModDamageAuraProc,                         // 13 SPELL_AURA_MOD_DAMAGE_DONE
     &Unit::HandleNULLProc,                                  // 14 SPELL_AURA_MOD_DAMAGE_TAKEN
     &Unit::HandleNULLProc,                                  // 15 SPELL_AURA_DAMAGE_SHIELD
     &Unit::HandleNULLProc,                                  // 16 SPELL_AURA_MOD_STEALTH
@@ -457,7 +457,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                     if (procSpell && procSpell->Id == 1680)
                         radius = 8.0f;
 
-                    target = SelectRandomUnfriendlyTarget(pVictim, radius);
+                    target = SelectRandomUnfriendlyTarget(pVictim, radius, false, true);
                     if (!target)
                         return SPELL_AURA_PROC_FAILED;
 
@@ -784,7 +784,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
             // Attaques circulaires
             if (dummySpell->Id == 12292)
             {
-                target = SelectRandomUnfriendlyTarget();
+                target = SelectRandomUnfriendlyTarget(nullptr, 5.0f, false, true);
                 if (!target)
                     return SPELL_AURA_PROC_FAILED;
                 triggered_spell_id = 26654;
@@ -882,7 +882,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                     if (procSpell && procSpell->Id == 22482)
                         return SPELL_AURA_PROC_FAILED;
 
-                    target = SelectRandomUnfriendlyTarget(pVictim);
+                    target = SelectRandomUnfriendlyTarget(pVictim, 5.0f, false, true);
 
                     if (!target)
                         return SPELL_AURA_PROC_FAILED;
@@ -1290,7 +1290,7 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(Unit *pVictim, uint32 d
                 // Patch 1.9: Aspect of the Pack and Aspect of the Cheetah - Periodic damage will no longer trigger the Dazed effect.
                 case 5118:  // Aspect of the Cheetah
                 case 13159: // Aspect of the Pack
-                    if (procFlags & (PROC_FLAG_ON_DO_PERIODIC | PROC_FLAG_ON_TAKE_PERIODIC))
+                    if (procFlags & (PROC_FLAG_ON_DO_PERIODIC | PROC_FLAG_ON_TAKE_PERIODIC | PROC_FLAG_SUCCESSFUL_PERIODIC_SPELL_HIT | PROC_FLAG_TAKEN_PERIODIC_SPELL_HIT))
                         return SPELL_AURA_PROC_FAILED;
             }
             break;
@@ -1479,7 +1479,7 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(Unit *pVictim, uint32 d
                         basepoints[EFFECT_INDEX_2] ? &basepoints[EFFECT_INDEX_2] : NULL,
                         true, castItem, triggeredByAura);
     else
-        CastSpell(target, trigger_spell_id, true, castItem, triggeredByAura, ObjectGuid(), nullptr, procSpell);
+        CastSpell(target, trigger_spell_id, true, castItem, triggeredByAura, GetObjectGuid(), nullptr, procSpell);
 
     if (cooldown && GetTypeId() == TYPEID_PLAYER)
         ((Player*)this)->AddSpellCooldown(trigger_spell_id, 0, time(NULL) + cooldown);
@@ -1718,4 +1718,11 @@ SpellAuraProcResult Unit::HandleModResistanceAuraProc(Unit* /*pVictim*/, uint32 
     }
 
     return SPELL_AURA_PROC_OK;
+}
+
+SpellAuraProcResult Unit::HandleModDamageAuraProc(Unit* /*pVictim*/, uint32 /*damage*/, Aura* triggeredByAura, SpellEntry const* procSpell, uint32 /*procFlag*/, uint32 /*procEx*/, uint32 /*cooldown*/)
+{
+    // the aura school mask must match the spell school
+    return !(procSpell == NULL || !(GetSchoolMask(procSpell->School) & triggeredByAura->GetModifier()->m_miscvalue))
+        ? SPELL_AURA_PROC_OK : SPELL_AURA_PROC_FAILED;
 }

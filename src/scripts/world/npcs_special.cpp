@@ -24,6 +24,7 @@ EndScriptData
 
 #include "scriptPCH.h"
 #include "../kalimdor/moonglade/boss_omen.h"
+#include <array>
 
 /* ContentData
 npc_chicken_cluck       100%    support for quest 3861 (Cluck!)
@@ -219,47 +220,6 @@ const uint32 HordeSoldierId[3] =
 /*######
 ## npc_doctor (handles both Gustaf Vanhowzen and Gregory Victor)
 ######*/
-
-bool GossipHello_npc_doctor(Player* pPlayer, Creature* pCreature)
-{
-    if (pCreature->isQuestGiver())
-        pPlayer->PrepareQuestMenu(pCreature->GetObjectGuid());
-
-    if ((pPlayer->GetTeam() == ALLIANCE && pPlayer->GetQuestStatus(QUEST_TRIAGE_A) == QUEST_STATUS_COMPLETE) || (pPlayer->GetTeam() == HORDE && pPlayer->GetQuestStatus(QUEST_TRIAGE_H) == QUEST_STATUS_COMPLETE))
-    {
-        if (pPlayer->GetSkillValue(SKILL_FIRST_AID) >= 240 && !pPlayer->HasSpell(10841))
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, -3100005, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
-        if (pPlayer->GetSkillValue(SKILL_FIRST_AID) >= 260 && !pPlayer->HasSpell(18629))
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, -3100006, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
-        if (pPlayer->GetSkillValue(SKILL_FIRST_AID) >= 290 && !pPlayer->HasSpell(18630))
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, -3100007, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
-    }
-
-    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
-    return true;
-}
-
-bool GossipSelect_npc_doctor(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
-{
-    pPlayer->PlayerTalkClass->ClearMenus();
-
-    switch (uiAction)
-    {
-    case GOSSIP_ACTION_INFO_DEF + 1:
-        pPlayer->CastSpell(pPlayer, 10843, true);
-        pPlayer->CLOSE_GOSSIP_MENU();
-        break;
-    case GOSSIP_ACTION_INFO_DEF + 2:
-        pPlayer->CastSpell(pPlayer, 18631, true);
-        pPlayer->CLOSE_GOSSIP_MENU();
-        break;
-    case GOSSIP_ACTION_INFO_DEF + 3:
-        pPlayer->CastSpell(pPlayer, 18632, true);
-        pPlayer->CLOSE_GOSSIP_MENU();
-        break;
-    }
-    return true;
-}
 
 struct npc_doctorAI : public ScriptedAI
 {
@@ -1403,20 +1363,19 @@ struct npc_felhound_minionAI : public ScriptedPetAI
 
     void UpdateAI(const uint32 uiDiff)
     {
-        if (!m_creature->getVictim())
-            return;
-
-        if (m_uiManaBurnTimer < uiDiff)
+        if (m_creature->getVictim())
         {
-            if (m_creature->getVictim()->getPowerType() == POWER_MANA)
-                DoCastSpellIfCan(m_creature->getVictim(), 15980);
-            m_uiManaBurnTimer = urand(9800, 15200);
-            return;
+            if (m_uiManaBurnTimer < uiDiff)
+            {
+                if (m_creature->getVictim()->getPowerType() == POWER_MANA)
+                    DoCastSpellIfCan(m_creature->getVictim(), 15980);
+                m_uiManaBurnTimer = urand(9800, 15200);
+                return;
+            }
+            else
+                m_uiManaBurnTimer -= uiDiff;
         }
-        else
-            m_uiManaBurnTimer -= uiDiff;
-
-        ScriptedPetAI::UpdatePetAI(uiDiff);
+        ScriptedPetAI::UpdateAI(uiDiff);
     }
 };
 
@@ -1468,7 +1427,7 @@ struct npc_gnomish_battle_chickenAI : ScriptedPetAI
     {
         if (pDoneBy && m_bFuryReady)
         {
-            if (DoCastSpellIfCan(m_creature, SPELL_CHICKEN_FURY, CAST_TRIGGERED) == CAST_OK)
+            if (DoCastSpellIfCan(m_creature, SPELL_CHICKEN_FURY, CF_TRIGGERED) == CAST_OK)
             {
                 m_uiChickenFuryTimer = 25000;
                 m_bFuryReady = false;
@@ -1484,7 +1443,7 @@ struct npc_gnomish_battle_chickenAI : ScriptedPetAI
         {
             if (m_uiBattleSquawkTimer < uiDiff)
             {
-                if (DoCastSpellIfCan(m_creature, SPELL_BATTLE_SQUAWK, CAST_TRIGGERED) == CAST_OK)
+                if (DoCastSpellIfCan(m_creature, SPELL_BATTLE_SQUAWK, CF_TRIGGERED) == CAST_OK)
                     m_bSquawkDone = true;
             }
             else
@@ -1517,8 +1476,8 @@ CreatureAI* GetAI_npc_gnomish_battle_chicken(Creature* pCreature)
 
 enum
 {
-    SPELL_Flame_Buffet = 9574,
-    SPELL_Flame_Breath = 20712
+    SPELL_FLAME_BUFFET = 9658,
+    SPELL_FLAME_BREATH = 8873
 };
 
 struct npc_arcanite_dragonlingAI : ScriptedPetAI
@@ -1526,53 +1485,36 @@ struct npc_arcanite_dragonlingAI : ScriptedPetAI
     explicit npc_arcanite_dragonlingAI(Creature* pCreature) : ScriptedPetAI(pCreature)
     {
         m_creature->SetCanModifyStats(true);
-
-        if (m_creature->GetCharmInfo())
-        {
-            if (sWorld.GetWowPatch() < WOW_PATCH_109)
-                m_creature->GetCharmInfo()->SetReactState(REACT_DEFENSIVE);
-            else 
-                m_creature->GetCharmInfo()->SetReactState(REACT_AGGRESSIVE);
-        }
-
-
-        m_firebuffetTimer = urand(0, 10000);
-        m_flamebreathTimer = urand(0, 20000);
-
+        m_creature->GetCharmInfo()->SetReactState(REACT_AGGRESSIVE);
         npc_arcanite_dragonlingAI::Reset();
     }
 
     uint32 m_firebuffetTimer;
     uint32 m_flamebreathTimer;
 
-
-    void Reset() override { }
-
-    void DamageTaken(Unit* pDoneBy, uint32 &uiDamage) override
-    {
-        ScriptedPetAI::DamageTaken(pDoneBy, uiDamage);
+    void Reset() override 
+    { 
+        m_firebuffetTimer = 5000;
+        m_flamebreathTimer = urand(10000, 60000);
     }
 
     void UpdatePetAI(const uint32 uiDiff) override
     {
         if (m_firebuffetTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_Flame_Buffet) == CAST_OK)
-                m_firebuffetTimer = urand(5000, 10000);
+            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_FLAME_BUFFET) == CAST_OK)
+                m_firebuffetTimer = 22500;
         }
         else
             m_firebuffetTimer -= uiDiff;
 
         if (m_flamebreathTimer < uiDiff)
         {
-            int32 damage = 300;
-            m_creature->CastCustomSpell(m_creature->getVictim(), SPELL_Flame_Breath, &damage, nullptr, nullptr, true);
-            m_flamebreathTimer = urand(5000, 20000);
+            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_FLAME_BREATH) == CAST_OK)
+                m_flamebreathTimer = urand(10000, 60000);
         }
         else
             m_flamebreathTimer -= uiDiff;
-
-
 
         ScriptedPetAI::UpdatePetAI(uiDiff);
     }
@@ -1760,7 +1702,7 @@ struct npc_the_cleanerAI : public ScriptedAI
 
     void Reset()
     {
-        DoCastSpellIfCan(m_creature, SPELL_IMMUNITY, CAST_TRIGGERED);
+        DoCastSpellIfCan(m_creature, SPELL_IMMUNITY, CF_TRIGGERED);
         m_uiDespawnTimer = 3000;
     }
 
@@ -1806,8 +1748,8 @@ enum
 {
     NPC_FIREWORK_GUY_ELUNE          = 15918,
 
-    GO_FIREWORK_LAUNCHER            = 180771,
-    GO_CLUSTER_LAUNCHER             = 180772,
+    NPC_FIREWORK_CREDIT_MARKER      = 15893,
+    NPC_CLUSTER_CREDIT_MARKER       = 15894,
     GO_OMEN_CLUSTER_LAUNCHER        = 180874,
 
     SPELL_LUNAR_FORTUNE             = 26522
@@ -1820,8 +1762,8 @@ struct FireworkStruct
     bool m_bIsCluster;
 };
 
-const FireworkStruct Fireworks[] =
-{
+const std::array<FireworkStruct, 25> Fireworks =
+{ {
     { 15872, {26357, 26303, 26302, 26300, 26301}, true }, // Blue Firework Cluster
     { 15873, {26360, 26308, 26307, 26306, 26305}, true }, // Red Firework Cluster
     { 15874, {26358, 26312, 26311, 26310, 26309}, true }, // Green Firework Cluster
@@ -1847,9 +1789,9 @@ const FireworkStruct Fireworks[] =
     { 15915, {26510, 26509, 26508, 26507, 26506}, true }, // Large White Firework Cluster
     { 15916, {26515, 26514, 26513, 26512, 26511}, true }, // Large Yellow Firework Cluster
     { 15918, {26487, 26509, 26508, 26507, 26483}, true }, // Lucky Rocket Cluster
-};
+}};
 
-const uint32 Launcher[] = { 180772, 180859, 180869, 180874, 180771, 180850, 180868 };
+const std::array<uint32, 7> Launcher = { { 180772, 180859, 180869, 180874, 180771, 180850, 180868 } };
 
 struct npc_pats_firework_guyAI : ScriptedAI
 {
@@ -1881,7 +1823,7 @@ struct npc_pats_firework_guyAI : ScriptedAI
 
     void IsUsable()
     {
-        for (uint8 i = 0; i < 25; ++i)
+        for (uint8 i = 0; i < Fireworks.size(); ++i)
         {
             if (Fireworks[i].m_uiNpcEntry == m_creature->GetEntry())
             {
@@ -1898,11 +1840,11 @@ struct npc_pats_firework_guyAI : ScriptedAI
         if (!m_bExist || m_bDone)
             return;
 
-        for (uint8 l = 0; l < 7; ++l)
+        for (uint8 l = 0; l < Launcher.size(); ++l)
         {
             if (auto pGo = GetClosestGameObjectWithEntry(m_creature, Launcher[l], CONTACT_DISTANCE))
             {
-                pGo->SendGameObjectCustomAnim(pGo->GetObjectGuid());
+                pGo->SendGameObjectCustomAnim();
                 break;
             }
         }
@@ -1943,13 +1885,12 @@ struct npc_pats_firework_guyAI : ScriptedAI
 
         if (m_creature->IsTemporarySummon())
         {
-            Player* pSummoner = m_creature->GetMap()->GetPlayer(static_cast<TemporarySummon*>(m_creature)->GetSummonerGuid());
-
-            if (pSummoner)
-                pSummoner->CastedCreatureOrGO(Fireworks[m_uiIndex].m_bIsCluster ? GO_CLUSTER_LAUNCHER : GO_FIREWORK_LAUNCHER, ObjectGuid(), 0);
+            if (Player* pSummoner = m_creature->GetMap()->GetPlayer(static_cast<TemporarySummon*>(m_creature)->GetSummonerGuid()))
+                if (CreatureInfo const* cInfo = ObjectMgr::GetCreatureTemplate(Fireworks[m_uiIndex].m_bIsCluster ? NPC_CLUSTER_CREDIT_MARKER : NPC_FIREWORK_CREDIT_MARKER))
+                    pSummoner->KilledMonster(cInfo, ObjectGuid());
         }
 
-        if (GetClosestGameObjectWithEntry(m_creature, GO_OMEN_CLUSTER_LAUNCHER, CONTACT_DISTANCE))
+        if (GetClosestGameObjectWithEntry(m_creature, GO_OMEN_CLUSTER_LAUNCHER, INTERACTION_DISTANCE))
             boss_omenAI::OnFireworkLaunch(m_creature);
 
         m_bDone = true;
@@ -2267,9 +2208,7 @@ enum TargetDummyEntry
 struct npc_target_dummyAI : ScriptedAI
 {
     uint32 m_uiStayTime;
-    uint32 m_uiAggroTimer;
     bool m_bActive;
-    bool m_bIsAggro;
     TargetDummySpells m_spawnEffect;
     TargetDummySpells m_passiveSpell;
 
@@ -2277,7 +2216,7 @@ struct npc_target_dummyAI : ScriptedAI
     {
         m_bActive = true;
         m_uiStayTime = TARGET_DUMMY_DURATION;
-        m_creature->addUnitState(UNIT_STAT_ROOT);
+        SetCombatMovement(false);
 
         switch (m_creature->GetEntry())
         {
@@ -2302,13 +2241,13 @@ struct npc_target_dummyAI : ScriptedAI
             }
         }
 
+        m_creature->AddAura(m_passiveSpell, ADD_AURA_PERMANENT);
         DoCastSpellIfCan(m_creature, m_spawnEffect, false);
     }
 
     void Reset() override
     {
-        m_bIsAggro = false;
-        m_uiAggroTimer = 3000;
+        
     }
 
     void Aggro(Unit* /*pWho*/) override
@@ -2334,22 +2273,6 @@ struct npc_target_dummyAI : ScriptedAI
 
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
-
-        m_creature->SetDefaultMovementType(IDLE_MOTION_TYPE);
-
-        if (!m_creature->hasUnitState(UNIT_STAT_ROOT))
-            m_creature->addUnitState(UNIT_STAT_ROOT);
-
-        if (m_uiAggroTimer < diff)
-        {
-            if (DoCastSpellIfCan(m_creature->getVictim(), m_passiveSpell, false) == CAST_OK)
-            {
-                m_uiAggroTimer = 3000;
-                m_bIsAggro = true;
-            }
-        }
-        else
-            m_uiAggroTimer -= diff;
     }
 };
 
@@ -2455,7 +2378,7 @@ struct npc_shahramAI : ScriptedPetAI
                 }
             }
 
-            if (shahramSpell && DoCastSpellIfCan(m_creature, shahramSpell, CAST_TRIGGERED) == CAST_OK)
+            if (shahramSpell && DoCastSpellIfCan(m_creature, shahramSpell, CF_TRIGGERED) == CAST_OK)
             {
                 if (!hasCastDebuff)
                     hasCastDebuff = true;
@@ -2523,7 +2446,7 @@ struct npc_goblin_land_mineAI : ScriptedAI
 
     void Reset() override
     {
-        m_creature->GetMotionMaster()->MoveIdle();
+        SetCombatMovement(false);
     }
 
     void MoveInLineOfSight(Unit* pWho) override
@@ -3434,8 +3357,9 @@ struct FireworkLocations
     std::vector<Location> m_pPositions;
 };
 
-const FireworkLocations FireworkLoc[] =
-{
+const std::array<FireworkLocations, 7> FireworkLoc 
+{{
+
     { STRANGLETHORN_VALE, BootyBayPos },
     { ORGRIMMAR, OrgrimmarPos },
     { UNDERCITY, UndercityPos },
@@ -3443,7 +3367,7 @@ const FireworkLocations FireworkLoc[] =
     { THUNDERBLUFF, ThunderBluffPos },
     { DUN_MOROGH, IronforgePos },
     { STORMWIND, StormwindPos }
-};
+}};
 
 struct npc_event_fireworksAI : public ScriptedAI
 {
@@ -3468,12 +3392,12 @@ struct npc_event_fireworksAI : public ScriptedAI
 
     void IsUsable()
     {
-        for (uint8 i = 0; i < 25; ++i)
+        for (auto i = 0; i < FireworkLoc.size(); ++i)
         {
             if (FireworkLoc[i].m_zoneId == m_creature->GetZoneId())
             {
                 m_bExist = true;
-                m_uiIndex = i;
+                m_uiIndex = static_cast<uint8>(i);
                 break;
             }
         }
@@ -3531,6 +3455,229 @@ CreatureAI* GetAI_npc_event_fireworks(Creature* pCreature)
     return new npc_event_fireworksAI(pCreature);
 }
 
+enum
+{
+    EVENT_VALENTINE_KWEE = 140,
+
+    SPELL_SMITTEN = 27572,
+    QUEST_GIFT_H = 8981,
+    QUEST_GIFT_A = 8993,
+
+    VAR_KWEE_THRALL = 2200,
+    VAR_KWEE_CAIRNE = 2201,
+    VAR_KWEE_SYLVANAS = 2202,
+    VAR_KWEE_HORDE = 2207,
+
+    VAR_KWEE_BOLVAR = 2203,
+    VAR_KWEE_MAGNI = 2204,
+    VAR_KWEE_TYRANDE = 2205,
+    VAR_KWEE_ALLIANCE = 2206,
+
+    TEXT_ID_VICTORY_A = 8315,
+    TEXT_ID_VICTORY_H = 8316,
+    TEXT_ID_TIE = 8318,
+
+};
+
+const uint32 CityZones[6] =
+{
+    1637, // Orgrimmar
+    1638, // Thunder Bluff
+    1497, // Undercity
+    1519, // Stormwind
+    1537, // Ironforge
+    1657  // Darnassus
+};
+
+struct npc_kwee_peddlefeetAI : public ScriptedAI
+{
+    npc_kwee_peddlefeetAI(Creature* pCreature) : ScriptedAI(pCreature), winningFaction(0), winningZone(0)
+    {
+        if (sGameEventMgr.CheckOneGameEvent(EVENT_VALENTINE_KWEE, time(nullptr)))
+        {
+            SetVariables();
+            m_creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
+            if (m_creature->GetZoneId() != winningZone && winningZone != 0)
+                m_creature->DespawnOrUnsummon();
+        }
+        Reset();
+    }
+
+    uint32 winningFaction;
+    uint32 winningZone;
+
+    void Reset() { }
+
+    void SetVariables()
+    {
+        uint32 firstBoss = 0;
+        uint32 horde = sObjectMgr.GetSavedVariable(VAR_KWEE_HORDE, 0);
+        uint32 alliance = sObjectMgr.GetSavedVariable(VAR_KWEE_ALLIANCE, 0);
+
+        if (horde > alliance)
+        {
+            winningFaction = VAR_KWEE_HORDE;
+            firstBoss = VAR_KWEE_THRALL;
+        }
+        else if (alliance > horde)
+        {
+            winningFaction = VAR_KWEE_ALLIANCE;
+            firstBoss = VAR_KWEE_BOLVAR;
+        }
+
+        if (firstBoss)
+        {
+            uint32 count = 0;
+            for (uint32 i = firstBoss; i < firstBoss + 3; i++)
+            {
+                uint32 savedVar = sObjectMgr.GetSavedVariable(i, 0);
+                if (savedVar > count)
+                {
+                    count = savedVar;
+                    winningZone = CityZones[i - VAR_KWEE_THRALL];
+                }
+            }
+        }
+    }
+
+    void ReceiveEmote(Player* pPlayer, uint32 uiEmote)
+    {
+        if (uiEmote == TEXTEMOTE_KISS)
+        {
+            if (pPlayer)
+                m_creature->CastSpell(pPlayer, SPELL_SMITTEN, false);
+        }
+    }
+};
+
+CreatureAI* GetAI_npc_kwee_peddlefeet(Creature* pCreature)
+{
+    return new npc_kwee_peddlefeetAI(pCreature);
+}
+
+bool GossipHello_npc_kwee_peddlefeet(Player* pPlayer, Creature* pCreature)
+{
+    pPlayer->SendUpdateWorldState(VAR_KWEE_THRALL, sObjectMgr.GetSavedVariable(VAR_KWEE_THRALL, 0));
+    pPlayer->SendUpdateWorldState(VAR_KWEE_CAIRNE, sObjectMgr.GetSavedVariable(VAR_KWEE_CAIRNE, 0));
+    pPlayer->SendUpdateWorldState(VAR_KWEE_SYLVANAS, sObjectMgr.GetSavedVariable(VAR_KWEE_SYLVANAS, 0));
+    pPlayer->SendUpdateWorldState(VAR_KWEE_HORDE, sObjectMgr.GetSavedVariable(VAR_KWEE_HORDE, 0));
+    pPlayer->SendUpdateWorldState(VAR_KWEE_BOLVAR, sObjectMgr.GetSavedVariable(VAR_KWEE_BOLVAR, 0));
+    pPlayer->SendUpdateWorldState(VAR_KWEE_MAGNI, sObjectMgr.GetSavedVariable(VAR_KWEE_MAGNI, 0));
+    pPlayer->SendUpdateWorldState(VAR_KWEE_TYRANDE, sObjectMgr.GetSavedVariable(VAR_KWEE_TYRANDE, 0));
+    pPlayer->SendUpdateWorldState(VAR_KWEE_ALLIANCE, sObjectMgr.GetSavedVariable(VAR_KWEE_ALLIANCE, 0));
+
+    if (sGameEventMgr.IsActiveEvent(EVENT_VALENTINE_KWEE))
+    {
+        if (npc_kwee_peddlefeetAI* kweeAI = dynamic_cast<npc_kwee_peddlefeetAI*>(pCreature->AI()))
+        {
+            uint32 faction = kweeAI->winningFaction;
+            uint32 textId = faction == VAR_KWEE_HORDE ? TEXT_ID_VICTORY_H : faction == VAR_KWEE_ALLIANCE ? TEXT_ID_VICTORY_A : TEXT_ID_TIE;
+            pPlayer->PlayerTalkClass->SendGossipMenu(textId, pCreature->GetObjectGuid());
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool QuestRewarded_npc_kwee_peddlefeet(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+{
+    if (pQuest->GetQuestId() != QUEST_GIFT_A && pQuest->GetQuestId() != QUEST_GIFT_H)
+        return true;
+
+    uint32 bossVar = 0, factionVar = 0;
+    for (uint32 i = VAR_KWEE_THRALL; i <= VAR_KWEE_TYRANDE; i++)
+    {
+        if (pCreature->GetZoneId() == CityZones[i - VAR_KWEE_THRALL])
+        {
+            bossVar = i;
+            factionVar = i < VAR_KWEE_BOLVAR ? VAR_KWEE_HORDE : VAR_KWEE_ALLIANCE;
+        }
+    }
+
+    if (bossVar)
+    {
+        uint32 count = sObjectMgr.GetSavedVariable(bossVar, 0);
+        count += pQuest->ReqItemCount[0];
+        sObjectMgr.SetSavedVariable(bossVar, count, true);
+    }
+
+    if (factionVar)
+    {
+        uint32 count = sObjectMgr.GetSavedVariable(factionVar, 0);
+        count += pQuest->ReqItemCount[0];
+        sObjectMgr.SetSavedVariable(factionVar, count, true);
+    }
+
+    return true;
+}
+
+enum
+{
+    OBJECT_DARK_IRON_MUG = 165578,
+    SPELL_DARK_IRON_MUG = 14813,
+    EMOTE_GUZZLE_ALE = 10167,
+};
+
+struct npc_oozeling_jubjubAI : public ScriptedPetAI
+{
+    npc_oozeling_jubjubAI(Creature* pCreature) : ScriptedPetAI(pCreature)
+    {
+        Reset();
+    }
+
+    uint32 m_uiReturnTimer;
+    void Reset()
+    {
+        m_uiReturnTimer = 0;
+    }
+
+    void SpellHit(Unit* pUnit, const SpellEntry* pSpell)
+    {
+        if (pSpell->Id == SPELL_DARK_IRON_MUG)
+            m_uiReturnTimer = 10000;
+    }
+
+    void MovementInform(uint32 type, uint32 id)
+    {
+        if (type == POINT_MOTION_TYPE && id == 1)
+        {
+            m_creature->MonsterTextEmote(EMOTE_GUZZLE_ALE);
+            m_creature->addUnitState(UNIT_STAT_ROOT);
+            m_uiReturnTimer = 3000;
+        }
+    }
+
+    void UpdateAI(const uint32 uiDiff)
+    {
+        if (m_uiReturnTimer > 0)
+        {
+            if (m_uiReturnTimer <= uiDiff)
+            {
+                m_uiReturnTimer = 0;
+                m_creature->clearUnitState(UNIT_STAT_ROOT);
+
+                if (GameObject* pMug = m_creature->FindNearestGameObject(OBJECT_DARK_IRON_MUG, 1.0f))
+                {
+                    pMug->SetLootState(GO_JUST_DEACTIVATED);
+                    pMug->AddObjectToRemoveList();
+                }
+            }
+            else
+                m_uiReturnTimer -= uiDiff;
+        }
+        else
+        {
+            ScriptedPetAI::UpdateAI(uiDiff);
+        }
+    }
+};
+
+CreatureAI* GetAI_npc_oozeling_jubjub(Creature* pCreature)
+{
+    return new npc_oozeling_jubjubAI(pCreature);
+}
+
 void AddSC_npcs_special()
 {
     Script *newscript;
@@ -3552,8 +3699,6 @@ void AddSC_npcs_special()
     newscript->GetAI = &GetAI_npc_doctor;
     newscript->pQuestAcceptNPC = &QuestAccept_npc_doctor;
     newscript->pQuestRewardedNPC = &QuestRewarded_npc_doctor;
-    newscript->pGossipHello = &GossipHello_npc_doctor;
-    newscript->pGossipSelect = &GossipSelect_npc_doctor;
     newscript->RegisterSelf();
 
     newscript = new Script;
@@ -3703,5 +3848,17 @@ void AddSC_npcs_special()
     newscript = new Script;
     newscript->Name = "npc_event_fireworks";
     newscript->GetAI = &GetAI_npc_event_fireworks;
+    newscript->RegisterSelf();
+
+    newscript = new Script;
+    newscript->Name = "npc_kwee_peddlefeet";
+    newscript->GetAI = &GetAI_npc_kwee_peddlefeet;
+    newscript->pGossipHello = &GossipHello_npc_kwee_peddlefeet;
+    newscript->pQuestRewardedNPC = &QuestRewarded_npc_kwee_peddlefeet;
+    newscript->RegisterSelf();
+
+    newscript = new Script;
+    newscript->Name = "npc_oozeling_jubjub";
+    newscript->GetAI = &GetAI_npc_oozeling_jubjub;
     newscript->RegisterSelf();
 }

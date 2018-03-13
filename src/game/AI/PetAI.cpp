@@ -136,7 +136,11 @@ void PetAI::UpdateAI(const uint32 diff)
             if (m_creature->GetCharmInfo()->HasCommandState(COMMAND_STAY))
             {
                 if (m_creature->GetCharmInfo()->IsCommandAttack() || (m_creature->GetCharmInfo()->IsAtStay() && m_creature->CanReachWithMeleeAttack(m_creature->getVictim())))
+                {
+                    if (!m_creature->HasInArc(M_PI_F, m_creature->getVictim()))
+                        m_creature->SetInFront(m_creature->getVictim());
                     attacked = DoMeleeAttackIfReady();
+                }
             }
             else
                 attacked = DoMeleeAttackIfReady();
@@ -159,7 +163,7 @@ void PetAI::UpdateAI(const uint32 diff)
 
             if (nextTarget)
                 AttackStart(nextTarget);
-            else
+            else if (!m_creature->HasReactState(REACT_PASSIVE))
             {
                 if (m_creature->isInCombat())
                     m_creature->CombatStop();
@@ -244,7 +248,7 @@ void PetAI::UpdateAI(const uint32 diff)
 
                 if (target)
                 {
-                    if (CanAttack(target) && spell->CanAutoCast(target))
+                    if (CanAttack(target) && spell->CanAutoCast(target, false))
                     {
                         targetSpellStore.push_back(std::make_pair(target, spell));
                         spellUsed = true;
@@ -262,7 +266,7 @@ void PetAI::UpdateAI(const uint32 diff)
                         if (!ally)
                             continue;
 
-                        if (spell->CanAutoCast(ally))
+                        if (spell->CanAutoCast(ally, true))
                         {
                             targetSpellStore.push_back(std::make_pair(ally, spell));
                             spellUsed = true;
@@ -278,7 +282,7 @@ void PetAI::UpdateAI(const uint32 diff)
             else if (m_creature->getVictim() && CanAttack(m_creature->getVictim()) && !IsNonCombatSpell(spellInfo))
             {
                 Spell *spell = new Spell(m_creature, spellInfo, false);
-                if (spell->CanAutoCast(m_creature->getVictim()))
+                if (spell->CanAutoCast(m_creature->getVictim(), false))
                     targetSpellStore.push_back(std::make_pair(m_creature->getVictim(), spell));
                 else
                     spell->Delete();

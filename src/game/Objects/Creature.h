@@ -32,6 +32,7 @@
 #include "Database/DatabaseEnv.h"
 #include "CreatureGroups.h"
 #include "Cell.h"
+#include "Util.h"
 
 #include <list>
 
@@ -61,6 +62,8 @@ enum CreatureFlagsExtra
     CREATURE_FLAG_EXTRA_GUARD                        = 0x00000400,       // creature is a guard
     CREATURE_FLAG_EXTRA_NO_THREAT_LIST               = 0x00000800,
     CREATURE_FLAG_EXTRA_KEEP_POSITIVE_AURAS_ON_EVADE = 0x00001000,       // creature keeps positive auras at reset
+    CREATURE_FLAG_EXTRA_ALWAYS_CRUSH                 = 0x00002000,       // creature always roll a crushing melee outcome when not miss/crit/dodge/parry/block
+    CREATURE_FLAG_EXTRA_IMMUNE_AOE                   = 0x00004000,       // creature is immune to AoE
 };
 
 // GCC have alternative #pragma pack(N) syntax and old gcc version not support pack(push,N), also any gcc version not support it at some platform
@@ -72,6 +75,7 @@ enum CreatureFlagsExtra
 
 #define MAX_KILL_CREDIT 2
 #define MAX_CREATURE_MODEL 4                                // only single send to client in static data
+#define CREATURE_FLEE_TEXT 1150
 
 // from `creature_template` table
 struct CreatureInfo
@@ -126,6 +130,7 @@ struct CreatureInfo
     int32   resistance5;
     int32   resistance6;
     uint32  spells[CREATURE_MAX_SPELLS];
+    uint32  spells_template;
     uint32  PetSpellDataId;
     uint32  mingold;
     uint32  maxgold;
@@ -193,7 +198,8 @@ struct CreatureData
     float posY;
     float posZ;
     float orientation;
-    uint32 spawntimesecs;
+    uint32 spawntimesecsmin;
+    uint32 spawntimesecsmax;
     float spawndist;
     uint32 currentwaypoint;
     uint32 curhealth;
@@ -201,10 +207,12 @@ struct CreatureData
     bool  is_dead;
     uint8 movementType;
     uint32 spawnFlags;
+    float visibilityModifier;
 
     uint32 instanciatedContinentInstanceId;
     // helper function
     ObjectGuid GetObjectGuid(uint32 lowguid) const { return ObjectGuid(CreatureInfo::GetHighGuid(), id, lowguid); }
+    uint32 GetRandomRespawnTime() const { return urand(spawntimesecsmin, spawntimesecsmax); }
 };
 
 // from `creature_addon` and `creature_template_addon`tables
@@ -510,6 +518,7 @@ class MANGOS_DLL_SPEC Creature : public Unit
         bool IsCivilian() const { return GetCreatureInfo()->civilian; }
         bool IsTrigger() const { return GetCreatureInfo()->flags_extra & CREATURE_FLAG_EXTRA_INVISIBLE; }
         bool IsGuard() const { return GetCreatureInfo()->flags_extra & CREATURE_FLAG_EXTRA_GUARD; }
+        bool IsImmuneToAoe() const { return IsTotem() || GetCreatureInfo()->flags_extra & CREATURE_FLAG_EXTRA_IMMUNE_AOE; }
 
         bool CanWalk() const override { return GetCreatureInfo()->InhabitType & INHABIT_GROUND; }
         bool CanSwim() const override { return IsPet() || GetCreatureInfo()->InhabitType & INHABIT_WATER; }
@@ -534,7 +543,7 @@ class MANGOS_DLL_SPEC Creature : public Unit
         void FillGuidsListFromThreatList(std::vector<ObjectGuid>& guids, uint32 maxamount = 0);
 
         bool IsImmuneToSpell(SpellEntry const *spellInfo, bool castOnSelf) override;
-        bool IsImmuneToDamage(SpellSchoolMask meleeSchoolMask) override;
+        bool IsImmuneToDamage(SpellSchoolMask meleeSchoolMask, SpellEntry const* spellInfo = nullptr) override;
         bool IsImmuneToSpellEffect(SpellEntry const *spellInfo, SpellEffectIndex index, bool castOnSelf) const override;
 
         bool IsElite() const
@@ -648,6 +657,7 @@ class MANGOS_DLL_SPEC Creature : public Unit
 
         void SendAIReaction(AiReaction reactionType);
 
+        void DoFlee();
         void DoFleeToGetAssistance();
         float GetFleeingSpeed() const;
         void CallForHelp(float fRadius);
@@ -673,6 +683,7 @@ class MANGOS_DLL_SPEC Creature : public Unit
         bool IsDeadByDefault() const { return m_isDeadByDefault; };
 
         void ForcedDespawn(uint32 timeMSToDespawn = 0);
+        void DespawnOrUnsummon(uint32 msTimeToDespawn = 0);
 
         time_t const& GetRespawnTime() const { return m_respawnTime; }
         time_t GetRespawnTimeEx() const;
@@ -717,13 +728,15 @@ class MANGOS_DLL_SPEC Creature : public Unit
         // AI helpers
         Unit* SelectNearestHostileUnitInAggroRange(bool useLOS) const;
         Unit* SelectNearestTargetInAttackDistance(float dist) const;
-        // - Selection de victime (dans la liste d'aggro)
+        Unit* DoSelectLowestHpFriendly(float fRange, uint32 uiMinHPDiff = 1, bool bPercent = false) const;
+        // - Victim selection (from aggro list)
         Unit* GetNearestVictimInRange(float min, float max);
         Unit* GetFarthestVictimInRange(float min, float max);
         Unit* GetVictimInRange(float min, float max);
         Unit* GetHostileCasterInRange(float min, float max);
         Unit* GetHostileCaster();
-        // - Selection generique
+
+        // - Generic Selection
         void ProcessThreatList(ThreatListProcesser* f);
 
         // Spell Launch :
@@ -818,6 +831,14 @@ class MANGOS_DLL_SPEC Creature : public Unit
 
         bool HasWeapon() const;
 
+        void SetCallForHelpDist(float dist)
+        {
+            m_callForHelpDist = dist;
+        }
+
+        // (msecs)timer used for group loot
+        uint32 GetGroupLootTimer() { return m_groupLootTimer; }
+
     protected:
         bool MeetsSelectAttackingRequirement(Unit* pTarget, SpellEntry const* pSpellInfo, uint32 selectFlags) const;
 
@@ -846,7 +867,6 @@ class MANGOS_DLL_SPEC Creature : public Unit
         uint32 m_respawnDelay;                              // (secs) delay between corpse disappearance and respawning
         uint32 m_corpseDelay;                               // (secs) delay between death and corpse disappearance
         float m_respawnradius;
-        uint32 m_combatPulseTimer;
 
         time_t m_combatStartTime;
         bool m_combatState;
@@ -890,6 +910,9 @@ class MANGOS_DLL_SPEC Creature : public Unit
         // Used to compute XP.
         uint32 _playerDamageTaken;
         uint32 _nonPlayerDamageTaken;
+        
+        float m_callForHelpDist;
+
     private:
         GridReference<Creature> m_gridRef;
         CreatureInfo const* m_creatureInfo;

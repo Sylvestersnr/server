@@ -291,14 +291,15 @@ void WorldSession::HandleCharCreateOpcode(WorldPacket & recv_data)
     bool have_same_race = false;
     if (!AllowTwoSideAccounts || skipCinematics == CINEMATICS_SKIP_SAME_RACE)
     {
-        QueryResult *result2 = CharacterDatabase.PQuery("SELECT race FROM characters WHERE account = '%u' %s",
-                               GetAccountId(), (skipCinematics == CINEMATICS_SKIP_SAME_RACE) ? "" : "LIMIT 1");
-        if (result2)
+        std::list<PlayerCacheData*> characters;
+        sObjectMgr.GetPlayerDataForAccount(GetAccountId(), characters);
+
+        if (characters.size() > 0)
         {
+            PlayerCacheData* cData = characters.front();
             Team team_ = Player::TeamForRace(race_);
 
-            Field* field = result2->Fetch();
-            uint8 acc_race  = field[0].GetUInt32();
+            uint8 acc_race = cData->uiRace;
 
             // need to check team only for first character
             // TODO: what to if account already has characters of both races?
@@ -308,24 +309,20 @@ void WorldSession::HandleCharCreateOpcode(WorldPacket & recv_data)
                 {
                     data << (uint8)CHAR_CREATE_PVP_TEAMS_VIOLATION;
                     SendPacket(&data);
-                    delete result2;
                     return;
                 }
             }
 
             // search same race for cinematic or same class if need
             // TODO: check if cinematic already shown? (already logged in?; cinematic field)
-            while (skipCinematics == CINEMATICS_SKIP_SAME_RACE && !have_same_race)
+            std::list<PlayerCacheData*>::iterator iter = characters.begin();
+            while (iter != characters.end() && skipCinematics == CINEMATICS_SKIP_SAME_RACE && !have_same_race)
             {
-                if (!result2->NextRow())
-                    break;
-
-                field = result2->Fetch();
-                acc_race = field[0].GetUInt32();
+                acc_race = (*iter)->uiRace;
 
                 have_same_race = race_ == acc_race;
+                ++iter;
             }
-            delete result2;
         }
     }
 
@@ -353,6 +350,7 @@ void WorldSession::HandleCharCreateOpcode(WorldPacket & recv_data)
     masterPlayer.SaveToDB();
 
     sObjectMgr.InsertPlayerInCache(pNewChar);
+    sObjectMgr.UpdatePlayerCachedPosition(pNewChar);
     _charactersCount += 1;
 
     LoginDatabase.PExecute("DELETE FROM realmcharacters WHERE acctid= '%u' AND realmid = '%u'", GetAccountId(), realmID);
@@ -384,7 +382,7 @@ void WorldSession::HandleCharDeleteOpcode(WorldPacket & recv_data)
     if (sGuildMgr.GetGuildByLeader(guid))
     {
         WorldPacket data(SMSG_CHAR_DELETE, 1);
-        data << (uint8)CHAR_DELETE_FAILED_GUILD_LEADER;
+        data << (uint8)CHAR_DELETE_FAILED;
         SendPacket(&data);
         return;
     }
@@ -588,44 +586,16 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder *holder)
         DEBUG_LOG("WORLD: Sent motd (SMSG_MOTD)");
     }
 
-    if (!alreadyOnline)
+    if (Guild* guild = sGuildMgr.GetGuildById(pCurrChar->GetGuildId()))
     {
-        //QueryResult *result = CharacterDatabase.PQuery("SELECT guildid,rank FROM guild_member WHERE guid = '%u'",pCurrChar->GetGUIDLow());
-        QueryResult *resultGuild = holder->GetResult(PLAYER_LOGIN_QUERY_LOADGUILD);
+        WorldPacket data(SMSG_GUILD_EVENT, (2 + guild->GetMOTD().size() + 1));
+        data << uint8(GE_MOTD);
+        data << uint8(1);
+        data << guild->GetMOTD();
+        SendPacket(&data);
+        DEBUG_LOG("WORLD: Sent guild-motd (SMSG_GUILD_EVENT)");
 
-        if (resultGuild)
-        {
-            Field *fields = resultGuild->Fetch();
-            pCurrChar->SetInGuild(fields[0].GetUInt32());
-            pCurrChar->SetRank(fields[1].GetUInt32());
-        }
-        else if (pCurrChar->GetGuildId())                       // clear guild related fields in case wrong data about nonexistent membership
-        {
-            pCurrChar->SetInGuild(0);
-            pCurrChar->SetRank(0);
-        }
-
-        if (pCurrChar->GetGuildId() != 0)
-        {
-            Guild* guild = sGuildMgr.GetGuildById(pCurrChar->GetGuildId());
-            if (guild)
-            {
-                data.Initialize(SMSG_GUILD_EVENT, (2 + guild->GetMOTD().size() + 1));
-                data << uint8(GE_MOTD);
-                data << uint8(1);
-                data << guild->GetMOTD();
-                SendPacket(&data);
-                DEBUG_LOG("WORLD: Sent guild-motd (SMSG_GUILD_EVENT)");
-
-                guild->BroadcastEvent(GE_SIGNED_ON, pCurrChar->GetObjectGuid(), pCurrChar->GetName());
-            }
-            else
-            {
-                // remove wrong guild data
-                sLog.outError("Player %s (GUID: %u) marked as member of nonexistent guild (id: %u), removing guild membership for player.", pCurrChar->GetName(), pCurrChar->GetGUIDLow(), pCurrChar->GetGuildId());
-                pCurrChar->SetInGuild(0);
-            }
-        }
+        guild->BroadcastEvent(GE_SIGNED_ON, pCurrChar->GetObjectGuid(), pCurrChar->GetName());
     }
 
     if (!pCurrChar->isAlive())
@@ -651,6 +621,8 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder *holder)
             pCurrChar->TeleportTo(at->target_mapId, at->target_X, at->target_Y, at->target_Z, pCurrChar->GetOrientation());
         else
             pCurrChar->TeleportToHomebind();
+
+        sMapMgr.ExecuteSingleDelayedTeleport(pCurrChar);
     }
 
     if (alreadyOnline)
@@ -768,6 +740,12 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder *holder)
     }
     pCurrChar->restorePendingTeleport();
 
+    sObjectMgr.UpdatePlayerCachedPosition(pCurrChar);
+
+    if (sWorld.getConfig(CONFIG_BOOL_SEND_LOOT_ROLL_UPON_RECONNECT) && alreadyOnline)
+        if (Group* pGroup = pCurrChar->GetGroup())
+            pGroup->SendLootStartRollsForPlayer(pCurrChar);
+
     // Update warden speeds
     //if (GetWarden())
         //for (int i = 0; i < MAX_MOVE_TYPE; ++i)
@@ -787,15 +765,6 @@ void WorldSession::HandleSetFactionAtWarOpcode(WorldPacket & recv_data)
     recv_data >> flag;
 
     GetPlayer()->GetReputationMgr().SetAtWar(repListID, flag);
-}
-
-void WorldSession::HandleMeetingStoneInfoOpcode(WorldPacket & /*recv_data*/)
-{
-    DEBUG_LOG("WORLD: Received CMSG_MEETING_STONE_INFO");
-
-    WorldPacket data(SMSG_MEETINGSTONE_SETQUEUE, 5);
-    data << uint32(0) << uint8(6);
-    SendPacket(&data);
 }
 
 void WorldSession::HandleTutorialFlagOpcode(WorldPacket & recv_data)
@@ -943,4 +912,5 @@ void WorldSession::HandleChangePlayerNameOpcodeCallBack(QueryResult *result, uin
     session->SendPacket(&data);
 
     sObjectMgr.ChangePlayerNameInCache(guidLow, oldname, newname);
+    sWorld.InvalidatePlayerDataToAllClient(guid);
 }

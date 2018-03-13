@@ -34,6 +34,7 @@
 #include "Commands/Nostalrius.h"
 #include "ObjectGuid.h"
 #include "MapNodes/AbstractPlayer.h"
+#include "WorldPacket.h"
 
 #include <map>
 #include <set>
@@ -43,7 +44,6 @@
 #include <unordered_map>
 
 class Object;
-class WorldPacket;
 class WorldSession;
 class Player;
 class Weather;
@@ -262,6 +262,9 @@ enum eConfigUInt32Values
     CONFIG_UINT32_RESPEC_MIN_MULTIPLIER,
     CONFIG_UINT32_RESPEC_MAX_MULTIPLIER,
     CONFIG_UINT32_BATTLEGROUND_GROUP_LIMIT,
+    CONFIG_UINT32_CREATURE_SUMMON_LIMIT,
+    CONFIG_UINT32_WAR_EFFORT_AUTOCOMPLETE_PERIOD,
+    CONFIG_UINT32_ACCOUNT_CONCURRENT_AUCTION_LIMIT,
     CONFIG_UINT32_VALUE_COUNT
 };
 
@@ -375,6 +378,7 @@ enum eConfigFloatValues
     CONFIG_FLOAT_THREAT_RADIUS,
     CONFIG_FLOAT_GHOST_RUN_SPEED_WORLD,
     CONFIG_FLOAT_GHOST_RUN_SPEED_BG,
+    CONFIG_FLOAT_RATE_WAR_EFFORT_RESOURCE,
     CONFIG_FLOAT_VALUE_COUNT
 };
 
@@ -458,6 +462,7 @@ enum eConfigBoolValues
     CONFIG_BOOL_ACCURATE_PVP_PURCHASE_REQUIREMENTS,
     CONFIG_BOOL_ACCURATE_PVP_ZONE_REQUIREMENTS,
     CONFIG_BOOL_BATTLEGROUND_RANDOMIZE,
+    CONFIG_BOOL_SEND_LOOT_ROLL_UPON_RECONNECT,
     CONFIG_BOOL_VALUE_COUNT
 };
 
@@ -525,6 +530,16 @@ class AsyncTask
 public:
     virtual ~AsyncTask() {}
     virtual void run() = 0;
+};
+
+class SessionPacketSendTask : public AsyncTask
+{
+public:
+    SessionPacketSendTask(uint32 accountId, WorldPacket& data) : m_accountId(accountId), m_data(data) {}
+    void run() override;
+private:
+    uint32 m_accountId;
+    WorldPacket m_data;
 };
 
 struct TransactionPart
@@ -627,6 +642,7 @@ class World
 
         // Get current server's WoW Patch
         uint8 GetWowPatch() const { return m_wowPatch; }
+        char* const GetPatchName() const;
 
         LocaleConstant GetDefaultDbcLocale() const { return m_defaultDbcLocale; }
 
@@ -732,6 +748,8 @@ class World
         static float GetRelocationLowerLimitSq()            { return m_relocation_lower_limit_sq; }
         static uint32 GetRelocationAINotifyDelay()          { return m_relocation_ai_notify_delay; }
 
+        static uint32 GetCreatureSummonCountLimit()         { return m_creatureSummonCountLimit; }
+
         void ProcessCliCommands();
         void QueueCliCommand(CliCommandHolder* commandHolder) { cliCmdQueue.add(commandHolder); }
 
@@ -753,13 +771,13 @@ class World
         uint32 GetAnticrashRearmTimer() const { return m_anticrashRearmTimer; }
 
         /**
-         * These async tasks should be added from THREADUNSAFE opcode handlers (since AddAsyncTask is *not* threadsafe)
+         * Async tasks, allow safe access to sessions (but not players themselves)
          * The tasks will be executed *while* maps are updated. So don't touch the mobs, pets, etc ...
+         * includes reading, unless the read itself is serialized
          */
-        void AddAsyncTask(AsyncTask* task) { _asyncTasks.push_back(task); }
-        void HandleAsyncTasks(int currThreadIdx, int threadsCount);
-        typedef std::vector<AsyncTask*> AsyncTaskVect;
-        AsyncTaskVect _asyncTasks;
+        void AddAsyncTask(AsyncTask* task) { _asyncTasks.add(task); }
+        bool GetNextAsyncTask(AsyncTask*& task) { return _asyncTasks.next(task); }
+        ACE_Based::LockedQueue<AsyncTask*, ACE_Thread_Mutex> _asyncTasks;
         /**
          * Database logs system
          */
@@ -779,6 +797,23 @@ class World
         };
         uint32 InsertLog(std::string const& message, AccountTypes sec);
         ArchivedLogMessage* GetLog(uint32 logId, AccountTypes my_sec);
+
+        /**
+        * \brief: force all client to request player data
+        * \param: ObjectGuid guid : guid of the specified player
+        * \returns: void
+        *
+        * Description: InvalidatePlayerDataToAllClient force all connected clients to clear specified player cache
+        * FullName: World::InvalidatePlayerDataToAllClient
+        * Access: public
+        **/
+        void InvalidatePlayerDataToAllClient(ObjectGuid guid);
+
+        // Manually override timer update secs to force a faster update
+        void SetWorldUpdateTimer(WorldTimers timer, uint32 current);
+        time_t GetWorldUpdateTimer(WorldTimers timer);
+        time_t GetWorldUpdateTimerInterval(WorldTimers timer);
+
     protected:
         void _UpdateGameTime();
         // callback for UpdateRealmCharacters
@@ -852,6 +887,8 @@ class World
 
         static float  m_relocation_lower_limit_sq;
         static uint32 m_relocation_ai_notify_delay;
+
+        static uint32 m_creatureSummonCountLimit;
 
         // CLI command holder to be thread safe
         ACE_Based::LockedQueue<CliCommandHolder*,ACE_Thread_Mutex> cliCmdQueue;

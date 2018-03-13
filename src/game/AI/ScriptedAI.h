@@ -46,7 +46,7 @@ struct MANGOS_DLL_DECL ScriptedAI : CreatureAI
     void EnterEvadeMode() override;
 
     //Called at any heal cast/item used (call non implemented in mangos)
-    void HealedBy(Unit* /*pHealer*/, uint32 /*uiAmountHealed*/) override {}
+    void HealedBy(Unit* /*pHealer*/, uint32& /*uiAmountHealed*/) override {}
 
     // Called at any Damage to any victim (before damage apply)
     void DamageDeal(Unit* /*pDoneTo*/, uint32& /*uiDamage*/) override {}
@@ -114,15 +114,11 @@ struct MANGOS_DLL_DECL ScriptedAI : CreatureAI
     //Plays a sound to all nearby players
     void DoPlaySoundToSet(WorldObject* pSource, uint32 uiSoundId);
 
-    void SendMonsterMoveWithSpeed(float x, float y, float z, uint32 MovementFlags, uint32 transitTime = 0, Player* player = nullptr);
     //Drops all threat to 0%. Does not remove players from the threat list
     void DoResetThreat();
 
     //Teleports a player without dropping threat (only teleports to same map)
     void DoTeleportPlayer(Unit* pUnit, float fX, float fY, float fZ, float fO);
-
-    //Returns friendly unit with the most amount of hp missing from max hp
-    Unit* DoSelectLowestHpFriendly(float fRange, uint32 uiMinHPDiff = 1, bool bPercent = false) const;
 
     //Returns a list of friendly CC'd units within range
     std::list<Creature*> DoFindFriendlyCC(float fRange);
@@ -133,6 +129,12 @@ struct MANGOS_DLL_DECL ScriptedAI : CreatureAI
     //Return a player with at least minimumRange from m_creature
     Player* GetPlayerAtMinimumRange(float fMinimumRange);
 
+    // Get a list of all players within range of m_creature
+    void GetPlayersWithinRange(std::list<Player*>& players, float range);
+
+    // Get the nearest player target within range
+    Player* GetNearestPlayer(float range);
+
     //Spawns a creature relative to m_creature
     Creature* DoSpawnCreature(uint32 uiId, float fX, float fY, float fZ, float fAngle, uint32 uiType, uint32 uiDespawntime);
 
@@ -142,14 +144,7 @@ struct MANGOS_DLL_DECL ScriptedAI : CreatureAI
     //Returns spells that meet the specified criteria from the creatures spell list
     SpellEntry const* SelectSpell(Unit* pTarget, int32 uiSchool, int32 uiMechanic, SelectTarget selectTargets, uint32 uiPowerCostMin, uint32 uiPowerCostMax, float fRangeMin, float fRangeMax, SelectEffect selectEffect);
 
-    //Checks if you can cast the specified spell
-    bool CanCast(Unit* pTarget, SpellEntry const* pSpell, bool bTriggered = false);
-
     void SetEquipmentSlots(bool bLoadDefault, int32 uiMainHand = EQUIP_NO_CHANGE, int32 uiOffHand = EQUIP_NO_CHANGE, int32 uiRanged = EQUIP_NO_CHANGE);
-
-    //Generally used to control if MoveChase() is to be used or not in AttackStart(). Some creatures does not chase victims
-    void SetCombatMovement(bool bCombatMove);
-    bool IsCombatMovement() const { return m_bCombatMovement; }
 
     bool EnterEvadeIfOutOfCombatArea(const uint32 uiDiff);
     void EnterEvadeIfOutOfHomeArea();
@@ -158,13 +153,12 @@ struct MANGOS_DLL_DECL ScriptedAI : CreatureAI
 
     float DoGetThreat(Unit* pUnit);
     void DoModifyThreatPercent(Unit* pUnit, int32 pct);
-    void DoTeleportTo(float fX, float fY, float fZ, uint32 uiTime);
+    void DoTeleportTo(float fX, float fY, float fZ);
     void DoTeleportTo(const float fPos[4]);
     void DoTeleportAll(float fX, float fY, float fZ, float fO);
     Creature* me;
 
     private:
-        bool   m_bCombatMovement;
         uint32 m_uiEvadeCheckCooldown;
 
         bool m_bEvadeOutOfHomeArea;

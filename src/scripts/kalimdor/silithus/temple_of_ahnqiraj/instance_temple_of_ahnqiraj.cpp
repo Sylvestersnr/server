@@ -359,10 +359,7 @@ void instance_temple_of_ahnqiraj::SetData(uint32 uiType, uint32 uiData)
             return;
         m_auiEncounter[uiType] = uiData;
         if (GameObject* pGo = GetSingleGameObjectFromStorage(GO_TWINS_ENTER_DOOR)) {
-            if (uiData == IN_PROGRESS) {
-                DoResetDoor(pGo->GetGUID());
-            }
-            else {
+            if (uiData != IN_PROGRESS) {
                 DoOpenDoor(pGo->GetGUID());
             }
         }
@@ -812,7 +809,7 @@ struct AI_QirajiMindslayer : public ScriptedAI {
             }
         }
         if (closestPlayer) {
-            DoCastSpellIfCan(closestPlayer, 26049, CAST_TRIGGERED | CAST_INTERRUPT_PREVIOUS);
+            DoCastSpellIfCan(closestPlayer, 26049, CF_TRIGGERED | CF_INTERRUPT_PREVIOUS);
         }
     }
 
@@ -865,21 +862,6 @@ InstanceData* GetInstanceData_instance_temple_of_ahnqiraj(Map* pMap)
     return new instance_temple_of_ahnqiraj(pMap);
 }
 
-bool GossipHello_npc_Caelestrasz(Player* pPlayer, Creature* pCreature)
-{
-    pPlayer->PrepareQuestMenu(pCreature->GetGUID());
-    if (InstanceData* instData = pCreature->GetInstanceData()) {
-        if (instData->GetData(TYPE_CTHUN) == DONE) {
-            pPlayer->SEND_GOSSIP_MENU(40101, pCreature->GetGUID());
-        }
-        else {
-            pPlayer->SEND_GOSSIP_MENU(40100, pCreature->GetGUID());
-        }
-        return true;
-    }
-    return false;
-}
-
 CreatureAI* GetAI_qirajiMindslayer(Creature* pCreature)
 {
     return new AI_QirajiMindslayer(pCreature);
@@ -897,11 +879,6 @@ void AddSC_instance_temple_of_ahnqiraj()
     pNewScript = new Script;
     pNewScript->Name = "at_temple_ahnqiraj";
     pNewScript->pAreaTrigger = &AreaTrigger_at_temple_ahnqiraj;
-    pNewScript->RegisterSelf();
-
-    pNewScript = new Script;
-    pNewScript->Name = "aq_caelestrasz_ai";
-    pNewScript->pGossipHello = &GossipHello_npc_Caelestrasz;
     pNewScript->RegisterSelf();
 
     pNewScript = new Script;

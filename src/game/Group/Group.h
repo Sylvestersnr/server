@@ -30,6 +30,8 @@
 #include "LootMgr.h"
 #include "DBCEnums.h"
 #include "SharedDefines.h"
+#include "LFGHandler.h"
+#include "LFGMgr.h"
 
 #include <map>
 #include <vector>
@@ -53,6 +55,18 @@ enum LootMethod
     MASTER_LOOT       = 2,
     GROUP_LOOT        = 3,
     NEED_BEFORE_GREED = 4
+};
+
+enum RemoveMethod
+{
+    GROUP_LEAVE = 0,
+    GROUP_KICK = 1
+};
+
+enum InviteMethod
+{
+    GROUP_JOIN = 0,
+    GROUP_LFG = 1
 };
 
 enum RollVote
@@ -188,8 +202,8 @@ class MANGOS_DLL_SPEC Group
         uint32 RemoveInvite(Player *player);
         void   RemoveAllInvites();
         bool   AddLeaderInvite(Player *player);
-        bool   AddMember(ObjectGuid guid, const char* name);
-        uint32 RemoveMember(ObjectGuid guid, uint8 method); // method: 0=just remove, 1=kick
+        bool   AddMember(ObjectGuid guid, const char* name, uint8 joinMethod = GROUP_JOIN);
+        uint32 RemoveMember(ObjectGuid guid, uint8 removeMethod); // method: 0=just remove, 1=kick
         void   ChangeLeader(ObjectGuid guid);
         void   SetLootMethod(LootMethod method) { m_lootMethod = method; }
         void   SetLooterGuid(ObjectGuid guid) { m_looterGuid = guid; }
@@ -256,7 +270,7 @@ class MANGOS_DLL_SPEC Group
         void ConvertToRaid();
 
         void SetBattlegroundGroup(BattleGround *bg) { m_bgGroup = bg; }
-        uint32 CanJoinBattleGroundQueue(BattleGroundTypeId bgTypeId, BattleGroundQueueTypeId bgQueueTypeId, uint32 MinPlayerCount, uint32 MaxPlayerCount);
+        uint32 CanJoinBattleGroundQueue(BattleGroundTypeId bgTypeId, BattleGroundQueueTypeId bgQueueTypeId, uint32 MinPlayerCount, uint32 MaxPlayerCount, Player* Leader, std::vector<uint32>* excludedMembers = nullptr);
 
         void ChangeMembersGroup(ObjectGuid guid, uint8 group);
         void ChangeMembersGroup(Player *player, uint8 group);
@@ -311,11 +325,23 @@ class MANGOS_DLL_SPEC Group
         void RewardGroupAtKill(Unit* pVictim, Player* player_tap);
 
         /*********************************************************/
+        /***                   LFG SYSTEM                      ***/
+        /*********************************************************/
+
+        void SetLFGAreaId(uint32 areaId) { m_LFGAreaId = areaId; }
+        uint32 GetLFGAreaId()            { return m_LFGAreaId;   }
+        bool isInLFG()                   { return (m_LFGAreaId > 0) ? true : false; }
+
+        void CalculateLFGRoles(LFGGroupQueueInfo& data);
+        bool FillPremadeLFG(const ObjectGuid& plrGuid, Classes playerClass, ClassRoles requiredRole, uint32& InitRoles, uint32& DpsCount, std::list<ObjectGuid>& processed);
+
+        /*********************************************************/
         /***                   LOOT SYSTEM                     ***/
         /*********************************************************/
 
         void SendLooter(Creature* creature, Player* pLooter);
         void SendLootStartRoll(uint32 CountDown, const Roll &r);
+        void SendLootStartRollsForPlayer(Player* player); // send every active rolls
         void SendLootRoll(ObjectGuid const& targetGuid, uint8 rollNumber, uint8 rollType, const Roll &r);
         void SendLootRollWon(ObjectGuid const& targetGuid, uint8 rollNumber, RollVote rollType, const Roll &r);
         void SendLootAllPassed(const Roll &r);
@@ -417,5 +443,6 @@ class MANGOS_DLL_SPEC Group
         BoundInstancesMap   m_boundInstances;
         uint8*              m_subGroupsCounts;
         Team                m_groupTeam; // ALLIANCE / HORDE / TEAM_NONE / TEAM_CROSSFACTION
+        uint32              m_LFGAreaId;
 };
 #endif

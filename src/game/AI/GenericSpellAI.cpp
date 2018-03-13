@@ -68,7 +68,7 @@ std::vector<MobSpellEntry> GenericSpellMobData;
 CreatureAI* GetAI_GenericSpellAI(Creature* pCreature);
 GenericAISpell BuildGenericAISpell(uint32 spellId, uint32 minCD, uint32 maxCD, uint32 target);
 void LoadSpellCacheData(GenericAISpell* spellToModify, SpellEntry const* spellInfos);
-void LoadGenericAISpellsData();
+//void LoadGenericAISpellsData();
 
 struct MANGOS_DLL_DECL GenericSpellMob : public ScriptedAI
 {
@@ -219,7 +219,7 @@ struct MANGOS_DLL_DECL GenericSpellMob : public ScriptedAI
                     }
                     case GENERIC_TARGET_FRIEND_NEED_HEAL:
                     {
-                        target = DoSelectLowestHpFriendly(it->maxRange, it->healValue / 4);
+                        target = m_creature->DoSelectLowestHpFriendly(it->maxRange, it->healValue / 4);
                         break;
                     }
                     case GENERIC_TARGET_FRIEND_DISPELL_CC:
@@ -489,6 +489,7 @@ void LoadSpellCacheData(GenericAISpell* spellToModify, SpellEntry const* spellIn
             switch (spellInfos->Effect[i])
             {
                 case SPELL_EFFECT_APPLY_AURA:
+                case SPELL_EFFECT_APPLY_AREA_AURA_PARTY:
                 {
                     switch (spellInfos->EffectApplyAuraName[i])
                     {
@@ -530,7 +531,7 @@ void LoadSpellCacheData(GenericAISpell* spellToModify, SpellEntry const* spellIn
 #endif
     }
 }
-
+/* this was never used
 void LoadGenericAISpellsData()
 {
     GenericSpellMobData.clear();
@@ -572,7 +573,7 @@ void LoadGenericAISpellsData()
         sLog.outString(">> Loaded 0 mob spells datas. DB table `creature_spells` is empty.");
     }
 }
-
+*/
 void AddSC_generic_spell_ai()
 {
     Script *newscript;
@@ -581,5 +582,5 @@ void AddSC_generic_spell_ai()
     newscript->Name = "generic_spell_ai";
     newscript->GetAI = &GetAI_GenericSpellAI;
     newscript->RegisterSelf();
-    LoadGenericAISpellsData();
+    //LoadGenericAISpellsData();
 }

@@ -122,10 +122,6 @@ struct SpellModifier
         : op(_op), type(_type), charges(_charges), value(_value), mask(_mask), spellId(_spellId), ownerAura(NULL)
     {}
 
-    SpellModifier(SpellModOp _op, SpellModType _type, int32 _value, uint32 _spellId, ClassFamilyMask _mask, int16 _charges = 0)
-        : op(_op), type(_type), charges(_charges), value(_value), mask(_mask), spellId(_spellId), ownerAura(NULL)
-    {}
-
     SpellModifier(SpellModOp _op, SpellModType _type, int32 _value, SpellEntry const* spellEntry, SpellEffectIndex eff, int16 _charges = 0);
 
     SpellModifier(SpellModOp _op, SpellModType _type, int32 _value, Aura* aura, int16 _charges = 0);
@@ -136,7 +132,7 @@ struct SpellModifier
     SpellModType type : 8;
     int16 charges     : 16; // 0 = infini, negatif = plus de charge.
     int32 value;
-    ClassFamilyMask mask;
+    uint64 mask;
     uint32 spellId;
     Aura* ownerAura;
 };
@@ -309,11 +305,8 @@ typedef std::list<Item*> ItemDurationList;
 
 enum RaidGroupError
 {
-    ERR_RAID_GROUP_NONE                 = 0,
-    ERR_RAID_GROUP_LOWLEVEL             = 1,
-    ERR_RAID_GROUP_ONLY                 = 2,
-    ERR_RAID_GROUP_FULL                 = 3,
-    ERR_RAID_GROUP_REQUIREMENTS_UNMATCH = 4
+    ERR_RAID_GROUP_REQUIRED = 1,
+    ERR_RAID_GROUP_FULL     = 2
 };
 
 enum DrunkenState
@@ -546,13 +539,12 @@ enum TradeSlots
     TRADE_SLOT_INVALID          = -1
 };
 
-// [-ZERO] Need fix, or maybe not exists
 enum TransferAbortReason
 {
-    TRANSFER_ABORT_NONE                         = 0x00,
     TRANSFER_ABORT_MAX_PLAYERS                  = 0x01,     // Transfer Aborted: instance is full
     TRANSFER_ABORT_NOT_FOUND                    = 0x02,     // Transfer Aborted: instance not found
     TRANSFER_ABORT_TOO_MANY_INSTANCES           = 0x03,     // You have entered too many instances recently.
+    TRANSFER_ABORT_SILENTLY                     = 0x04,     // no message shown; the same effect give values above 5
     TRANSFER_ABORT_ZONE_IN_COMBAT               = 0x05,     // Unable to zone in while an encounter is in progress.
 };
 
@@ -632,6 +624,29 @@ enum PlayerDelayedOperations
     DELAYED_SPELL_CAST_DESERTER   = 0x04,
     DELAYED_CAST_HONORLESS_TARGET = 0x08,
     DELAYED_END
+};
+
+enum PlayerMountResult
+{
+    MOUNTRESULT_INVALIDMOUNTEE  = 0,    // You can't mount that unit!
+    MOUNTRESULT_TOOFARAWAY      = 1,    // That mount is too far away!
+    MOUNTRESULT_ALREADYMOUNTED  = 2,    // You're already mounted!
+    MOUNTRESULT_NOTMOUNTABLE    = 3,    // That unit can't be mounted!
+    MOUNTRESULT_NOTYOURPET      = 4,    // That mount isn't your pet!
+    MOUNTRESULT_OTHER           = 5,    // internal
+    MOUNTRESULT_LOOTING         = 6,    // You can't mount while looting!
+    MOUNTRESULT_RACECANTMOUNT   = 7,    // You can't mount because of your race!
+    MOUNTRESULT_SHAPESHIFTED    = 8,    // You can't mount while shapeshifted!
+    MOUNTRESULT_FORCEDDISMOUNT  = 9,    // You dismount before continuing.
+    MOUNTRESULT_OK              = 10    // no error
+};
+
+enum PlayerDismountResult
+{
+    DISMOUNTRESULT_NOPET        = 0,    // internal
+    DISMOUNTRESULT_NOTMOUNTED   = 1,    // You're not mounted!
+    DISMOUNTRESULT_NOTYOURPET   = 2,    // internal
+    DISMOUNTRESULT_OK           = 3     // no error
 };
 
 enum ReputationSource
@@ -832,6 +847,27 @@ struct AuraSaveStruct
     uint32 effIndexMask;
 };
 
+struct ScheduledTeleportData
+{
+    ScheduledTeleportData() : targetMapId(0), x(0.0f), y(0.0f), z(0.0f),
+        orientation(0.0f), options(0), recover(std::function<void()>()) {};
+
+    ScheduledTeleportData(uint32 mapid, float x, float y, float z, float o,
+        uint32 options, std::function<void()> recover)
+        : targetMapId(mapid), x(x), y(y), z(z),
+          orientation(o), options(options), recover(recover) {};
+
+    uint32 targetMapId;
+    float x;
+    float y;
+    float z;
+    float orientation;
+
+    uint32 options;
+
+    std::function<void()> recover;
+};
+
 class MANGOS_DLL_SPEC Player final: public Unit
 {
     friend class WorldSession;
@@ -860,6 +896,10 @@ class MANGOS_DLL_SPEC Player final: public Unit
         {
             return TeleportTo(loc.mapid, loc.coord_x, loc.coord_y, loc.coord_z, loc.orientation, options, recover);
         }
+
+        // _NOT_ thread-safe. Must be executed by the map manager after map updates, since we
+        // remove objects from the map
+        bool ExecuteTeleportFar(ScheduledTeleportData *data);
 
         bool TeleportToBGEntryPoint();
 
@@ -901,7 +941,7 @@ class MANGOS_DLL_SPEC Player final: public Unit
 
         void SendInitialPacketsBeforeAddToMap();
         void SendInitialPacketsAfterAddToMap(bool login = true);
-        void SendTransferAborted(uint32 mapid, uint8 reason, uint8 arg = 0);
+        void SendTransferAborted(uint8 reason);
         void SendInstanceResetWarning(uint32 mapid, uint32 time);
 
         Creature* GetNPCIfCanInteractWith(ObjectGuid guid, uint32 npcflagmask);
@@ -933,6 +973,10 @@ class MANGOS_DLL_SPEC Player final: public Unit
                                                             // mount_id can be used in scripting calls
         void TaxiStepFinished();
         void ContinueTaxiFlight();
+        void Mount(uint32 mount, uint32 spellId = 0) override;
+        void Unmount(bool from_aura = false) override;
+        void SendMountResult(PlayerMountResult result);
+        void SendDismountResult(PlayerDismountResult result);
         bool isAcceptTickets() const { return GetSession()->GetSecurity() >= SEC_GAMEMASTER && (m_ExtraFlags & PLAYER_EXTRA_GM_ACCEPT_TICKETS); }
         void SetAcceptTicket(bool on) { if(on) m_ExtraFlags |= PLAYER_EXTRA_GM_ACCEPT_TICKETS; else m_ExtraFlags &= ~PLAYER_EXTRA_GM_ACCEPT_TICKETS; }
 
@@ -1141,6 +1185,7 @@ class MANGOS_DLL_SPEC Player final: public Unit
         void SendEquipError( InventoryResult msg, Item* pItem, Item *pItem2 = NULL, uint32 itemid = 0 ) const;
         void SendBuyError( BuyResult msg, Creature* pCreature, uint32 item, uint32 param );
         void SendSellError( SellResult msg, Creature* pCreature, ObjectGuid itemGuid, uint32 param );
+        void SendOpenContainer();
         void AddWeaponProficiency(uint32 newflag) { m_WeaponProficiency |= newflag; }
         void AddArmorProficiency(uint32 newflag) { m_ArmorProficiency |= newflag; }
         uint32 GetWeaponProficiency() const { return m_WeaponProficiency; }
@@ -1289,10 +1334,11 @@ class MANGOS_DLL_SPEC Player final: public Unit
         void SendQuestCompleteEvent(uint32 quest_id);
         void SendQuestReward( Quest const *pQuest, uint32 XP, Object* questGiver );
         void SendQuestFailed( uint32 quest_id);
+        void SendQuestFailedAtTaker(uint32 quest_id, uint32 reason = INVALIDREASON_DONT_HAVE_REQ) const;
         void SendQuestTimerFailed( uint32 quest_id );
         void SendCanTakeQuestResponse( uint32 msg ) const;
         void SendQuestConfirmAccept(Quest const* pQuest, Player* pReceiver);
-        void SendPushToPartyResponse( Player *pPlayer, uint32 msg );
+        void SendPushToPartyResponse( Player *pPlayer, uint8 msg );
         void SendQuestUpdateAddItem( Quest const* pQuest, uint32 item_idx, uint32 count );
         void SendQuestUpdateAddCreatureOrGo(Quest const* pQuest, ObjectGuid guid, uint32 creatureOrGO_idx, uint32 count);
 
@@ -1648,11 +1694,13 @@ class MANGOS_DLL_SPEC Player final: public Unit
         void learnSkillRewardedSpells(uint32 id, uint32 value);
 
         WorldLocation& GetTeleportDest() { return m_teleport_dest; }
-        bool IsBeingTeleported() const { return mSemaphoreTeleport_Near || mSemaphoreTeleport_Far; }
+        bool IsBeingTeleported() const { return mSemaphoreTeleport_Near || mSemaphoreTeleport_Far || mPendingFarTeleport; }
         bool IsBeingTeleportedNear() const { return mSemaphoreTeleport_Near; }
         bool IsBeingTeleportedFar() const { return mSemaphoreTeleport_Far; }
+        bool IsPendingFarTeleport() const { return mPendingFarTeleport; }
         void SetSemaphoreTeleportNear(bool semphsetting);
         void SetSemaphoreTeleportFar(bool semphsetting);
+        void SetPendingFarTeleport(bool pending) { mPendingFarTeleport = pending; }
         void ProcessDelayedOperations();
 
         void CheckAreaExploreAndOutdoor(void);
@@ -1958,7 +2006,7 @@ class MANGOS_DLL_SPEC Player final: public Unit
 
         void SetHomebindToLocation(WorldLocation const& loc, uint32 area_id);
         void RelocateToHomebind() { SetLocationMapId(m_homebindMapId); Relocate(m_homebindX, m_homebindY, m_homebindZ); }
-        bool TeleportToHomebind(uint32 options = 0) { return TeleportTo(m_homebindMapId, m_homebindX, m_homebindY, m_homebindZ, GetOrientation(), options); }
+        bool TeleportToHomebind(uint32 options = 0, bool hearthCooldown = true);
 
         Object* GetObjectByTypeMask(ObjectGuid guid, TypeMask typemask);
 
@@ -1982,6 +2030,10 @@ class MANGOS_DLL_SPEC Player final: public Unit
             void UpdateVisibilityOf(WorldObject const* viewPoint,T* target, UpdateData& data, std::set<WorldObject*>& visibleNow);
 
         Camera& GetCamera() { return m_camera; }
+
+        uint32 GetLongSight() const { return m_longSightSpell; }
+        void SetLongSight(const Aura* aura = nullptr);
+        void UpdateLongSight();
 
         bool HasAtLoginFlag(AtLoginFlags f) const { return m_atLoginFlags & f; }
         void SetAtLoginFlag(AtLoginFlags f) { m_atLoginFlags |= f; }
@@ -2126,8 +2178,11 @@ class MANGOS_DLL_SPEC Player final: public Unit
 
         inline bool HasScheduledEvent() const { return m_Events.HasScheduledEvent(); }
         void SetAutoInstanceSwitch(bool v) { m_enableInstanceSwitch = v; }
+        void SetPendingInstanceSwitch(bool v) { m_pendingInstanceSwitch = v; }
+        bool IsPendingInstanceSwitch() const { return m_pendingInstanceSwitch; }
     protected:
         bool   m_enableInstanceSwitch;
+        bool   m_pendingInstanceSwitch;
         uint32 m_skippedUpdateTime;
         uint32 m_DetectInvTimer;
 
@@ -2199,6 +2254,7 @@ class MANGOS_DLL_SPEC Player final: public Unit
         bool _LoadHomeBind(QueryResult *result);
         void _LoadBGData(QueryResult* result);
         void _LoadIntoDataField(const char* data, uint32 startOffset, uint32 count);
+        void _LoadGuild(QueryResult* result);
 
         /*********************************************************/
         /***                   SAVE SYSTEM                     ***/
@@ -2371,6 +2427,9 @@ class MANGOS_DLL_SPEC Player final: public Unit
         Unit *m_mover;
         Camera m_camera;
 
+        float m_longSightRange;
+        uint32 m_longSightSpell;
+
         GridReference<Player> m_gridRef;
         MapReference m_mapRef;
 
@@ -2384,6 +2443,7 @@ class MANGOS_DLL_SPEC Player final: public Unit
         uint32 m_lastFallTime;
         float  m_lastFallZ;
 
+        LiquidTypeEntry const* m_lastLiquid;
         uint8 m_isunderwater;
         bool m_isInWater;
 
@@ -2394,6 +2454,7 @@ class MANGOS_DLL_SPEC Player final: public Unit
         std::function<void()> m_teleportRecoverDelayed;
         bool mSemaphoreTeleport_Near;
         bool mSemaphoreTeleport_Far;
+        bool mPendingFarTeleport;
 
         uint32 m_DelayedOperations;
         bool m_bCanDelayTeleport;

@@ -21,6 +21,7 @@
 
 #include "Common.h"
 #include "Database/DatabaseEnv.h"
+#include "Database/DatabaseImpl.h"
 #include "DBCStores.h"
 #include "WorldPacket.h"
 #include "WorldSession.h"
@@ -39,6 +40,7 @@
 #include "Util.h"
 #include "Anticheat.h"
 #include "SQLStorages.h"
+#include "AsyncCommandHandlers.h"
 #ifdef _DEBUG_VMAPS
 #include "VMapFactory.h"
 #endif
@@ -642,10 +644,15 @@ bool ChatHandler::HandleModifyHPCommand(char* args)
     if (!*args)
         return false;
 
-    int32 hp = atoi(args);
-    int32 hpm = atoi(args);
+    int32 hp = 0;
+    int32 hpm = 0;
+    ExtractInt32(&args, hp);
+    ExtractInt32(&args, hpm);
 
-    if (hp <= 0 || hpm <= 0 || hpm < hp)
+    if (hpm < hp)
+        hpm = hp;
+
+    if (hp <= 0)
     {
         SendSysMessage(LANG_BAD_VALUE);
         SetSentErrorMessage(true);
@@ -680,10 +687,15 @@ bool ChatHandler::HandleModifyManaCommand(char* args)
     if (!*args)
         return false;
 
-    int32 mana = atoi(args);
-    int32 manam = atoi(args);
+    int32 mana = 0;
+    int32 manam = 0;
+    ExtractInt32(&args, mana);
+    ExtractInt32(&args, manam);
 
-    if (mana <= 0 || manam <= 0 || manam < mana)
+    if (manam < mana)
+        manam = mana;
+
+    if (mana <= 0)
     {
         SendSysMessage(LANG_BAD_VALUE);
         SetSentErrorMessage(true);
@@ -825,7 +837,7 @@ bool ChatHandler::HandleModifyFactionCommand(char* args)
     if (!ExtractUint32KeyFromLink(&args, "Hfaction", factionid))
         return false;
 
-    if (!sFactionTemplateStore.LookupEntry(factionid))
+    if (!sObjectMgr.GetFactionTemplateEntry(factionid))
     {
         PSendSysMessage(LANG_WRONG_FACTION, factionid);
         SetSentErrorMessage(true);
@@ -1598,6 +1610,49 @@ bool ChatHandler::HandleLookupTeleCommand(char * args)
     return true;
 }
 
+bool ChatHandler::HandleLookupSoundCommand(char* args)
+{
+    if (!*args)
+        return false;
+
+    std::string namepart = args;
+
+    // converting string that we try to find to lower case
+    strToLower(namepart);
+
+    uint32 counter = 0;                                     // Counter for figure out that we found smth.
+
+    for (uint32 id = 0; id < sObjectMgr.GetMaxSoundId(); ++id)
+    {
+        SoundEntriesEntry const *soundEntry = sObjectMgr.GetSoundEntry(id);
+        if (soundEntry)
+        {
+            int loc = GetSessionDbcLocale();
+            std::string name = soundEntry->Name;
+
+            if (name.empty())
+                continue;
+
+            strToLower(name);
+
+            if (name.find(namepart) == std::string::npos)
+                continue;
+
+            if (m_session)
+                PSendSysMessage(LANG_COMMAND_SOUND_LIST, id, id, soundEntry->Name.c_str());
+            else
+                PSendSysMessage("%u - %s", id, soundEntry->Name.c_str());
+
+            counter++;
+        }
+    }
+
+    if (counter == 0)
+        SendSysMessage(LANG_COMMAND_SOUND_NOT_FOUND);
+
+    return true;
+}
+
 //Enable\Disable accept whispers (for GM)
 bool ChatHandler::HandleWhispersCommand(char* args)
 {
@@ -2262,45 +2317,25 @@ bool ChatHandler::HandleGoldRemoval(char* args)
 
     Player* player = sObjectMgr.GetPlayer(name.c_str());
 
+    uint32 removalAmount = (gold * GOLD) + (silver * SILVER) + copper;
+
     if (player)
     {
         prevMoney = player->GetMoney();
-        player->ModifyMoney(-static_cast<int32>((gold * GOLD) + (silver * SILVER) + copper));
+        player->ModifyMoney(-static_cast<int32>(removalAmount));
         newMoney = player->GetMoney();
+
+        PSendSysMessage("Removed %ug %us %uc from %s", gold, silver, copper, name.c_str());
+        PSendSysMessage("%s previously had %ug %us %uc", name.c_str(), prevMoney / GOLD, (prevMoney % GOLD) / SILVER, (prevMoney % GOLD) % SILVER);
+        PSendSysMessage("%s now has %ug %us %uc", name.c_str(), newMoney / GOLD, (newMoney % GOLD) / SILVER, (newMoney % GOLD) % SILVER);
     }
     else
     {
         CharacterDatabase.escape_string(name);
-        std::unique_ptr<QueryResult> result(CharacterDatabase.PQuery("SELECT money FROM characters WHERE name = '%s'", name.c_str()));
-
-        if (!result)
-        {
-            PSendSysMessage(LANG_PLAYER_NOT_FOUND);
-            SetSentErrorMessage(true);
-            return false;
-        }
-
-        Field *fields = result->Fetch();
-        prevMoney = fields[0].GetUInt32();
-        newMoney = prevMoney - ((gold * GOLD) + (silver * SILVER) + copper);
-
-        if (newMoney > prevMoney)
-        {
-            newMoney = 0;
-        }
-
-        auto res = CharacterDatabase.PExecute("UPDATE characters SET money = %u WHERE name = '%s'", newMoney, name.c_str());
-
-        if (!res)
-        {
-            PSendSysMessage("Encountered a database error during gold removal - see log for details");
-            SetSentErrorMessage(true);
-            return false;
-        }
+        CharacterDatabase.AsyncPQueryUnsafe(&PlayerGoldRemovalHandler::HandleGoldLookupResult,
+            GetAccountId(), removalAmount,
+            "SELECT money, guid, name FROM characters WHERE name = '%s'",
+            name.c_str());
     }
-
-    PSendSysMessage("Removed %ug %us %uc from %s", gold, silver, copper, name.c_str());
-    PSendSysMessage("%s previously had %ug %us %uc", name.c_str(), prevMoney / GOLD, (prevMoney % GOLD) / SILVER, (prevMoney % GOLD) % SILVER);
-    PSendSysMessage("%s now has %ug %us %uc", name.c_str(), newMoney / GOLD, (newMoney % GOLD) / SILVER, (newMoney % GOLD) % SILVER);
     return true;
 }

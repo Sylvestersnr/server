@@ -25,6 +25,7 @@
 #include "ProgressBar.h"
 #include "World.h"
 #include "Util.h"
+#include "Conditions.h"
 
 static eConfigFloatValues const qualityToRate[MAX_ITEM_QUALITY] =
 {
@@ -99,7 +100,7 @@ void LootStore::LoadLootTable()
     sLog.outString("%s :", GetName());
 
     //                                                 0      1     2                    3        4              5         6
-    QueryResult* result = WorldDatabase.PQuery("SELECT entry, item, ChanceOrQuestChance, groupid, mincountOrRef, maxcount, condition_id FROM %s WHERE (mincountOrRef < 0) || (item NOT IN (SELECT entry FROM forbidden_items WHERE (AfterOrBefore = 0 && patch <= %u) || (AfterOrBefore = 1 && patch >= %u)))", GetName(), sWorld.GetWowPatch(), sWorld.GetWowPatch());
+    QueryResult* result = WorldDatabase.PQuery("SELECT entry, item, ChanceOrQuestChance, groupid, mincountOrRef, maxcount, condition_id FROM %s WHERE ((%u >= patch_min) && (%u <= patch_max)) && ((mincountOrRef < 0) || (item NOT IN (SELECT entry FROM forbidden_items WHERE (AfterOrBefore = 0 && patch <= %u) || (AfterOrBefore = 1 && patch >= %u))))", GetName(), sWorld.GetWowPatch(), sWorld.GetWowPatch(), sWorld.GetWowPatch(), sWorld.GetWowPatch());
 
     if (result)
     {
@@ -135,7 +136,7 @@ void LootStore::LoadLootTable()
 
             if (conditionId)
             {
-                const PlayerCondition* condition = sConditionStorage.LookupEntry<PlayerCondition>(conditionId);
+                const ConditionEntry* condition = sConditionStorage.LookupEntry<ConditionEntry>(conditionId);
                 if (!condition)
                 {
                     sLog.outErrorDb("Table `%s` for entry %u, item %u has condition_id %u that does not exist in `conditions`, ignoring", GetName(), entry, item, conditionId);
@@ -143,7 +144,7 @@ void LootStore::LoadLootTable()
                     continue;
                 }
 
-                if (mincountOrRef < 0 && !PlayerCondition::CanBeUsedWithoutPlayer(conditionId))
+                if (mincountOrRef < 0 && !ConditionEntry::CanBeUsedWithoutPlayer(conditionId))
                 {
                     sLog.outErrorDb("Table '%s' entry %u mincountOrRef %i < 0 and has condition %u that requires a player and is not supported, skipped", GetName(), entry, mincountOrRef, conditionId);
                     sLog.out(LOG_DBERRFIX, "DELETE FROM %s WHERE entry=%u AND item=%u;", GetName(), entry, item);
@@ -377,7 +378,7 @@ LootItem::LootItem(uint32 itemid_, uint32 count_, int32 randomPropertyId_)
 bool LootItem::AllowedForPlayer(Player const* player, WorldObject const* lootTarget) const
 {
     // DB conditions check
-    if (conditionId && !sObjectMgr.IsPlayerMeetToCondition(conditionId, player, player->GetMap(), lootTarget, CONDITION_FROM_LOOT))
+    if (conditionId && !sObjectMgr.IsConditionSatisfied(conditionId, player, player->GetMap(), lootTarget, CONDITION_FROM_LOOT))
         return false;
 
     ItemPrototype const *pProto = ObjectMgr::GetItemPrototype(itemid);
@@ -393,11 +394,38 @@ bool LootItem::AllowedForPlayer(Player const* player, WorldObject const* lootTar
     else
     {
         // Not quest only drop (check quest starting items for already accepted non-repeatable quests)
-        if (pProto->StartQuest && player->GetQuestStatus(pProto->StartQuest) != QUEST_STATUS_NONE && !player->HasQuestForItem(itemid))
-            return false;
+        if (pProto->StartQuest)
+        {
+            Quest const *pQuest = sObjectMgr.GetQuestTemplate(pProto->StartQuest);
+            if (pQuest && !pQuest->IsRepeatable() && player->GetQuestStatus(pProto->StartQuest) != QUEST_STATUS_NONE && !player->HasQuestForItem(itemid) && !(pProto->ExtraFlags & ITEM_EXTRA_IGNORE_QUEST_STATUS))
+                return false;
+        }
     }
     if (!lootOwner.IsEmpty())
         return player->GetObjectGuid() == lootOwner;
+
+    return true;
+}
+
+// Check for group wide item compatibility
+bool LootStoreItem::AllowedForTeam(Loot const& loot) const
+{
+    if (conditionId)
+    {
+        ConditionEntry const* condition = sConditionStorage.LookupEntry<ConditionEntry>(conditionId);
+        if (!condition)
+            return false;
+
+        // Team check
+        Team conditionTeam = condition->GetTeam();
+        if ((conditionTeam == ALLIANCE || conditionTeam == HORDE) && conditionTeam != loot.GetTeam())
+            return false;
+
+        // Check non-player dependant conditions
+        if (ConditionEntry::CanBeUsedWithoutPlayer(conditionId))
+            if (!condition->Meets(nullptr, nullptr, loot.GetLootTarget(), CONDITION_FROM_LOOT))
+                return false;
+    }
 
     return true;
 }
@@ -1030,6 +1058,9 @@ LootStoreItem const * LootTemplate::LootGroup::Roll(Loot const& loot) const
 
         for (uint32 i = 0; i < ExplicitlyChanced.size(); ++i) //check each explicitly chanced entry in the template and modify its chance based on quality.
         {
+            if (!ExplicitlyChanced[i].AllowedForTeam(loot))
+                continue;
+
             if (ExplicitlyChanced[i].chance >= 100.0f)
                 return &ExplicitlyChanced[i];
 
@@ -1047,18 +1078,8 @@ LootStoreItem const * LootTemplate::LootGroup::Roll(Loot const& loot) const
         indexesOk.reserve(EqualChanced.size());
         for (size_t i = 0; i < EqualChanced.size(); ++i)
         {
-            uint32 conditionId = EqualChanced[i].conditionId;
-            if (conditionId)
-            {
-                PlayerCondition const* condition = sConditionStorage.LookupEntry<PlayerCondition>(conditionId);
-                if (!condition)
-                    continue;
-                Team conditionTeam = condition->GetTeam();
-                if ((conditionTeam == ALLIANCE || conditionTeam == HORDE) && conditionTeam != loot.GetTeam())
-                    continue;
-                if (!condition->CheckPatch())
-                    continue;
-            }
+            if (!EqualChanced[i].AllowedForTeam(loot))
+                continue;
             indexesOk.push_back(i);
         }
         if (indexesOk.size())

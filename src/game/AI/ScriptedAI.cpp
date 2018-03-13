@@ -12,7 +12,6 @@
 
 ScriptedAI::ScriptedAI(Creature* pCreature) : CreatureAI(pCreature),
     me(pCreature),
-    m_bCombatMovement(true),
     m_uiEvadeCheckCooldown(2500),
     m_uiHomeArea(m_creature->GetAreaId())
 {
@@ -56,7 +55,7 @@ void ScriptedAI::AttackStart(Unit* pWho)
         m_creature->SetInCombatWith(pWho);
         pWho->SetInCombatWith(m_creature);
 
-        if (IsCombatMovement())
+        if (m_CombatMovementEnabled)
             m_creature->GetMotionMaster()->MoveChase(pWho);
     }
     else
@@ -79,6 +78,10 @@ void ScriptedAI::UpdateAI(const uint32 uiDiff)
 {
     //Check if we have a current target
     m_creature->SelectHostileTarget();
+
+    if (!m_CreatureSpells.empty() && m_creature->isInCombat())
+        DoSpellTemplateCasts(uiDiff);
+
     DoMeleeAttackIfReady();
 }
 
@@ -92,7 +95,12 @@ void ScriptedAI::EnterEvadeMode()
     if (m_creature->isAlive())
         m_creature->GetMotionMaster()->MoveTargetedHome();
 
-    m_creature->SetLootRecipient(nullptr);
+    // Prevent raid loot loss on grid unload
+    if (!m_creature->IsWorldBoss() || !m_creature->isDead())
+        m_creature->SetLootRecipient(nullptr);
+
+    // Reset back to default spells template. This also resets timers.
+    SetSpellsTemplate(m_creature->GetCreatureInfo()->spells_template);
 
     Reset();
 }
@@ -137,7 +145,7 @@ void ScriptedAI::DoPlaySoundToSet(WorldObject* pSource, uint32 uiSoundId)
     if (!pSource)
         return;
 
-    if (!GetSoundEntriesStore()->LookupEntry(uiSoundId))
+    if (!sObjectMgr.GetSoundEntry(uiSoundId))
     {
         sLog.outError("Invalid soundId %u used in DoPlaySoundToSet (Source: TypeId %u, GUID %u)", uiSoundId, pSource->GetTypeId(), pSource->GetGUIDLow());
         return;
@@ -247,33 +255,6 @@ SpellEntry const* ScriptedAI::SelectSpell(Unit* pTarget, int32 uiSchool, int32 u
     return apSpell[rand()%uiSpellCount];
 }
 
-bool ScriptedAI::CanCast(Unit* pTarget, SpellEntry const* pSpellEntry, bool bTriggered)
-{
-    //No target so we can't cast
-    if (!pTarget || !pSpellEntry)
-        return false;
-
-    //Silenced so we can't cast
-    if (!bTriggered && m_creature->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_SILENCED))
-        return false;
-
-    //Check for power
-    if (!bTriggered && m_creature->GetPower((Powers)pSpellEntry->powerType) < pSpellEntry->manaCost)
-        return false;
-
-    SpellRangeEntry const* pTempRange = GetSpellRangeStore()->LookupEntry(pSpellEntry->rangeIndex);
-
-    //Spell has invalid range store so we can't use it
-    if (!pTempRange)
-        return false;
-
-    //Unit is out of range of this spell
-    if (!m_creature->IsInRange(pTarget, pTempRange->minRange, pTempRange->maxRange))
-        return false;
-
-    return true;
-}
-
 void ScriptedAI::DoResetThreat()
 {
     if (!m_creature->CanHaveThreatList() || m_creature->getThreatManager().isThreatListEmpty())
@@ -303,18 +284,6 @@ void ScriptedAI::DoTeleportPlayer(Unit* pUnit, float fX, float fY, float fZ, flo
     }
 
     ((Player*)pUnit)->TeleportTo(pUnit->GetMapId(), fX, fY, fZ, fO, TELE_TO_NOT_LEAVE_COMBAT);
-}
-
-Unit* ScriptedAI::DoSelectLowestHpFriendly(float fRange, uint32 uiMinHPDiff, bool bPercent) const
-{
-    Unit* pUnit = nullptr;
-
-    MaNGOS::MostHPMissingInRangeCheck u_check(m_creature, fRange, uiMinHPDiff, bPercent);
-    MaNGOS::UnitLastSearcher<MaNGOS::MostHPMissingInRangeCheck> searcher(pUnit, u_check);
-
-    Cell::VisitGridObjects(m_creature, searcher, fRange);
-
-    return pUnit;
 }
 
 std::list<Creature*> ScriptedAI::DoFindFriendlyCC(float fRange)
@@ -353,6 +322,24 @@ Player* ScriptedAI::GetPlayerAtMinimumRange(float fMinimumRange)
     return pPlayer;
 }
 
+void ScriptedAI::GetPlayersWithinRange(std::list<Player*>& players, float range)
+{
+    MaNGOS::AnyPlayerInObjectRangeCheck check(m_creature, range);
+    MaNGOS::PlayerListSearcher<MaNGOS::AnyPlayerInObjectRangeCheck> searcher(players, check);
+
+    Cell::VisitWorldObjects(m_creature, searcher, range);
+}
+
+Player* ScriptedAI::GetNearestPlayer(float range)
+{
+    Player* target = nullptr;
+    MaNGOS::NearestHostileUnitCheck check(m_creature, range);
+    MaNGOS::PlayerSearcher<MaNGOS::NearestHostileUnitCheck> searcher(target, check);
+    Cell::VisitWorldObjects(m_creature, searcher, range);
+
+    return target;
+}
+
 void ScriptedAI::SetEquipmentSlots(bool bLoadDefault, int32 uiMainHand, int32 uiOffHand, int32 uiRanged)
 {
     if (bLoadDefault)
@@ -371,17 +358,14 @@ void ScriptedAI::SetEquipmentSlots(bool bLoadDefault, int32 uiMainHand, int32 ui
         m_creature->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_DISPLAY + 2, uint32(uiRanged));
 }
 
-void ScriptedAI::SetCombatMovement(bool bCombatMove)
-{
-    m_bCombatMovement = bCombatMove;
-}
-
 // Hacklike storage used for misc creatures that are expected to evade of outside of a certain area.
 // It is assumed the information is found elswehere and can be handled by mangos. So far no luck finding such information/way to extract it.
 enum
 {
     NPC_BROODLORD   = 12017,
-    NPC_VISCIDUS    = 15299
+    NPC_VISCIDUS    = 15299,
+    NPC_SYLVANAS    = 10181,
+    NPC_VARIMATHRAS = 2425
 };
 
 bool ScriptedAI::EnterEvadeIfOutOfCombatArea(const uint32 uiDiff)
@@ -409,6 +393,11 @@ bool ScriptedAI::EnterEvadeIfOutOfCombatArea(const uint32 uiDiff)
             break;
         case NPC_VISCIDUS:
             if (fZ < -30.0f)
+                return false;
+            break;
+        case NPC_SYLVANAS:
+        case NPC_VARIMATHRAS:
+            if (m_creature->GetDistance(fX, fY, fZ) < 120.0f)
                 return false;
             break;
         default:
@@ -470,13 +459,9 @@ void ScriptedAI::DoModifyThreatPercent(Unit* pUnit, int32 pct)
     me->getThreatManager().modifyThreatPercent(pUnit, pct);
 }
 
-void ScriptedAI::DoTeleportTo(float fX, float fY, float fZ, uint32 uiTime)
+void ScriptedAI::DoTeleportTo(float fX, float fY, float fZ)
 {
     me->NearTeleportTo(fX, fY, fZ, me->GetOrientation());
-/*
-    me->Relocate(fX, fY, fZ);
-    me->MonsterMoveWithSpeed(fX, fY, fZ, 100000);
-*/
 }
 
 void ScriptedAI::DoTeleportTo(const float fPos[4])

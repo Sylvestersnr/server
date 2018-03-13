@@ -28,6 +28,7 @@
 #include "LootMgr.h"
 #include "Database/DatabaseEnv.h"
 #include <mutex>
+#include "Util.h"
 
 // GCC have alternative #pragma pack(N) syntax and old gcc version not support pack(push,N), also any gcc version not support it at some platform
 #if defined( __GNUC__ )
@@ -509,17 +510,20 @@ struct GameObjectData
     float rotation1;
     float rotation2;
     float rotation3;
-    int32  spawntimesecs;
+    int32  spawntimesecsmin;
+    int32  spawntimesecsmax;
     uint32 animprogress;
     GOState go_state;
     uint32 spawnFlags;
+    float visibilityModifier;
 
     uint32 instanciatedContinentInstanceId;
     uint32 ComputeRespawnDelay(uint32 baseDelay) const;
+    uint32 GetRandomRespawnTime() const { return urand(uint32(spawntimesecsmin), uint32(spawntimesecsmax)); }
 };
 
 // For containers:  [GO_NOT_READY]->GO_READY (close)->GO_ACTIVATED (open) ->GO_JUST_DEACTIVATED->GO_READY        -> ...
-// For bobber:      GO_NOT_READY  ->GO_READY (close)->GO_ACTIVATED (open) ->GO_JUST_DEACTIVATED-><deleted>
+// For bobber:      [GO_NOT_READY]->GO_READY (close)->GO_ACTIVATED (open) ->GO_JUST_DEACTIVATED-><deleted>
 // For door(closed):[GO_NOT_READY]->GO_READY (close)->GO_ACTIVATED (open) ->GO_JUST_DEACTIVATED->GO_READY(close) -> ...
 // For door(open):  [GO_NOT_READY]->GO_READY (open) ->GO_ACTIVATED (close)->GO_JUST_DEACTIVATED->GO_READY(open)  -> ...
 enum LootState
@@ -636,6 +640,9 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
         void SetGoAnimProgress(uint32 animprogress) { SetUInt32Value(GAMEOBJECT_ANIMPROGRESS, animprogress); }
         uint32 GetDisplayId() const { return GetUInt32Value(GAMEOBJECT_DISPLAYID); }
         void SetDisplayId(uint32 modelId);
+
+        void SendGameObjectCustomAnim(uint32 animId = 0);
+        void SendGameObjectReset();
 
         float GetObjectBoundingRadius() const;              // overwrite WorldObject version
 

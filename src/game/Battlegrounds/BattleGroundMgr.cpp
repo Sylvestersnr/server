@@ -35,8 +35,9 @@
 #include "WorldPacket.h"
 #include "Language.h"
 #include "GameEventMgr.h"
-
 #include "Policies/SingletonImp.h"
+#include <chrono>
+#include <random>
 
 INSTANTIATE_SINGLETON_1(BattleGroundMgr);
 
@@ -140,7 +141,7 @@ bool BattleGroundQueue::SelectionPool::AddGroup(GroupQueueInfo *ginfo, uint32 de
 /*********************************************************/
 
 // add group or player (grp == NULL) to bg queue with the given leader and bg specifications
-GroupQueueInfo * BattleGroundQueue::AddGroup(Player *leader, Group* grp, BattleGroundTypeId BgTypeId, BattleGroundBracketId bracketId, bool isPremade)
+GroupQueueInfo * BattleGroundQueue::AddGroup(Player *leader, Group* grp, BattleGroundTypeId BgTypeId, BattleGroundBracketId bracketId, bool isPremade, std::vector<uint32>* excludedMembers)
 {
     // create new ginfo
     GroupQueueInfo* ginfo = new GroupQueueInfo;
@@ -173,6 +174,9 @@ GroupQueueInfo * BattleGroundQueue::AddGroup(Player *leader, Group* grp, BattleG
                 Player *member = itr->getSource();
                 if (!member)
                     continue;   // this should never happen
+                
+                if (excludedMembers && (std::find(excludedMembers->begin(), excludedMembers->end(), member->GetGUIDLow()) != excludedMembers->end()))
+                    continue;
 
                 if (grp->GetMembersCount() > group_limit) // queue players solo if group size is above limit set in config
                 {
@@ -677,8 +681,13 @@ void BattleGroundQueue::Update(BattleGroundTypeId bgTypeId, BattleGroundBracketI
 
     if (sWorld.getConfig(CONFIG_BOOL_BATTLEGROUND_RANDOMIZE))
     {
-        std::random_shuffle(m_QueuedGroups[bracket_id][BG_QUEUE_NORMAL_ALLIANCE].begin(), m_QueuedGroups[bracket_id][BG_QUEUE_NORMAL_ALLIANCE].end());
-        std::random_shuffle(m_QueuedGroups[bracket_id][BG_QUEUE_NORMAL_HORDE].begin(), m_QueuedGroups[bracket_id][BG_QUEUE_NORMAL_HORDE].end());
+        auto seed = std::chrono::system_clock::now().time_since_epoch().count();
+        std::shuffle(m_QueuedGroups[bracket_id][BG_QUEUE_NORMAL_ALLIANCE].begin(),
+            m_QueuedGroups[bracket_id][BG_QUEUE_NORMAL_ALLIANCE].end(),
+            std::default_random_engine(seed));
+        std::shuffle(m_QueuedGroups[bracket_id][BG_QUEUE_NORMAL_HORDE].begin(),
+            m_QueuedGroups[bracket_id][BG_QUEUE_NORMAL_HORDE].end(),
+            std::default_random_engine(seed));
     }
 
     //battleground with free slot for player should be always in the beginning of the queue
@@ -747,9 +756,16 @@ void BattleGroundQueue::Update(BattleGroundTypeId bgTypeId, BattleGroundBracketI
         else
         {
             // Now randomize
-            std::random_shuffle(m_QueuedGroups[bracket_id][BG_QUEUE_NORMAL_ALLIANCE].begin(), m_QueuedGroups[bracket_id][BG_QUEUE_NORMAL_ALLIANCE].begin() + minPlayersInQueue);
-            std::random_shuffle(m_QueuedGroups[bracket_id][BG_QUEUE_NORMAL_HORDE].begin(), m_QueuedGroups[bracket_id][BG_QUEUE_NORMAL_HORDE].begin() + minPlayersInQueue);
-            sLog.out(LOG_BG, "Alterac queue randomized (%u alliance vs %u horde)", m_QueuedGroups[bracket_id][BG_QUEUE_NORMAL_ALLIANCE].size(), m_QueuedGroups[bracket_id][BG_QUEUE_NORMAL_HORDE].size());
+            auto seed = std::chrono::system_clock::now().time_since_epoch().count();
+            std::shuffle(m_QueuedGroups[bracket_id][BG_QUEUE_NORMAL_ALLIANCE].begin(),
+                m_QueuedGroups[bracket_id][BG_QUEUE_NORMAL_ALLIANCE].begin() + minPlayersInQueue,
+                std::default_random_engine(seed));
+            std::shuffle(m_QueuedGroups[bracket_id][BG_QUEUE_NORMAL_HORDE].begin(),
+                m_QueuedGroups[bracket_id][BG_QUEUE_NORMAL_HORDE].begin() + minPlayersInQueue,
+                std::default_random_engine(seed));
+            sLog.out(LOG_BG, "Alterac queue randomized (%u alliance vs %u horde)",
+                m_QueuedGroups[bracket_id][BG_QUEUE_NORMAL_ALLIANCE].size(),
+                m_QueuedGroups[bracket_id][BG_QUEUE_NORMAL_HORDE].size());
         }
     }
     if (bgTypeId == BATTLEGROUND_AV && sWorld.getConfig(CONFIG_UINT32_AV_INITIAL_MAX_PLAYERS) && !sBattleGroundMgr.isTesting() && normalMatchesCreationAttempts)
@@ -1061,10 +1077,11 @@ void BattleGroundMgr::BuildPvpLogDataPacket(WorldPacket *data, BattleGround *bg)
     }
 }
 
-void BattleGroundMgr::BuildGroupJoinedBattlegroundPacket(WorldPacket *data, uint32 mapId)
+void BattleGroundMgr::BuildGroupJoinedBattlegroundPacket(WorldPacket *data, int32 status)
 {
     data->Initialize(SMSG_GROUP_JOINED_BATTLEGROUND, 4);
-    *data << uint32(mapId);
+    // for status, see enum BattleGroundGroupJoinStatus
+    *data << int32(status);
 }
 
 void BattleGroundMgr::BuildUpdateWorldStatePacket(WorldPacket *data, uint32 field, uint32 value)

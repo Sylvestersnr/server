@@ -31,7 +31,6 @@
 #include "ObjectMgr.h"
 #include "ZoneScriptMgr.h"
 #include "Map.h"
-#include "MoveMap.h"
 
 typedef MaNGOS::ClassLevelLockable<MapManager, ACE_Recursive_Thread_Mutex> MapManagerLock;
 INSTANTIATE_SINGLETON_2(MapManager, MapManagerLock);
@@ -42,7 +41,8 @@ MapManager::MapManager()
     i_MaxInstanceId(RESERVED_INSTANCES_LAST),
     i_GridStateErrorCount(0),
     i_continentUpdateFinished(NULL),
-    i_maxContinentThread(0)
+    i_maxContinentThread(0),
+    asyncMapUpdating(false)
 {
     i_timer.SetInterval(sWorld.getConfig(CONFIG_UINT32_INTERVAL_MAPUPDATE));
 }
@@ -205,7 +205,7 @@ bool MapManager::CanPlayerEnter(uint32 mapid, Player* player)
         if (!player->CheckInstanceCount(instanceId))
         {
             DEBUG_LOG("MAP: Player '%s' can't enter instance %u on map %u. Has already entered too many instances.", player->GetName(), instanceId, mapid);
-            player->SendTransferAborted(mapid, TRANSFER_ABORT_TOO_MANY_INSTANCES, 0);
+            player->SendTransferAborted(TRANSFER_ABORT_TOO_MANY_INSTANCES);
             return false;
         }
 
@@ -213,7 +213,7 @@ bool MapManager::CanPlayerEnter(uint32 mapid, Player* player)
         /*if(i_data && i_data->IsEncounterInProgress())
         {
             DEBUG_LOG("MAP: Player '%s' can't enter instance '%s' while an encounter is in progress.", player->GetName(), GetMapName());
-            player->SendTransferAborted(GetId(), TRANSFER_ABORT_ZONE_IN_COMBAT);
+            player->SendTransferAborted(TRANSFER_ABORT_ZONE_IN_COMBAT);
             return(false);
         }*/
     }
@@ -263,8 +263,6 @@ public:
             ++loops;
         }
         while (!(*updateFinished));
-
-        MMAP::MMapFactory::createOrGetMMapManager()->CleanUpCurrentThreadNavQuery();
         WorldDatabase.ThreadEnd();
     }
     std::vector<Map*> maps;
@@ -284,8 +282,6 @@ public:
     {
         WorldDatabase.ThreadStart();
         map->DoUpdate(diff);
-
-        MMAP::MMapFactory::createOrGetMMapManager()->CleanUpCurrentThreadNavQuery();
         WorldDatabase.ThreadEnd();
     }
     Map* map;
@@ -298,8 +294,13 @@ void MapManager::Update(uint32 diff)
     if (!i_timer.Passed())
         return;
 
+    // Execute any teleports scheduled in the main thread prior to map update
+    // eg. area triggers, world port acks
+    ExecuteDelayedPlayerTeleports();
+
     uint32 mapsDiff = (uint32)i_timer.GetCurrent();
     bool updateFinished = false;
+    asyncMapUpdating = true;
     std::vector<MapAsyncUpdater*> instanceUpdaters(sWorld.getConfig(CONFIG_UINT32_MAPUPDATE_INSTANCED_UPDATE_THREADS));
     std::vector<ContinentAsyncUpdater*> continentsUpdaters;
     for (int i = 0; i < instanceUpdaters.size(); ++i)
@@ -352,8 +353,6 @@ void MapManager::Update(uint32 diff)
     for (int tid = instanceUpdaters.size(); tid < asyncUpdateThreads.size(); ++tid)
     {
         asyncUpdateThreads[tid]->wait();
-        // Thread has finished. Remove any nav mesh queries from the MMapManager
-        //MMAP::MMapFactory::createOrGetMMapManager()->CleanUpNavQuery(asyncUpdateThreads[tid]->currentId());
         delete asyncUpdateThreads[tid];
     }
 
@@ -368,6 +367,10 @@ void MapManager::Update(uint32 diff)
     }
     delete[] i_continentUpdateFinished;
     i_continentUpdateFinished = NULL;
+    asyncMapUpdating = false;
+
+    // Execute far teleports after all map updates have finished
+    ExecuteDelayedPlayerTeleports();
 
     MapMapType::iterator crashedMapsIter = i_maps.begin();
     while (crashedMapsIter != i_maps.end())
@@ -376,7 +379,7 @@ void MapManager::Update(uint32 diff)
         {
             sZoneScriptMgr.OnMapCrashed(crashedMapsIter->second);
             crashedMapsIter->second->CrashUnload();
-            i_maps.erase(crashedMapsIter++);
+            crashedMapsIter = i_maps.erase(crashedMapsIter);
         }
         else
             ++crashedMapsIter;
@@ -394,7 +397,7 @@ void MapManager::Update(uint32 diff)
             pMap->UnloadAll(true);
             delete pMap;
 
-            i_maps.erase(iter++);
+            iter = i_maps.erase(iter);
         }
         else
             ++iter;
@@ -428,6 +431,10 @@ void MapManager::UnloadAll()
 {
     for (MapMapType::iterator iter = i_maps.begin(); iter != i_maps.end(); ++iter)
         iter->second->UnloadAll(true);
+
+    // Execute any delayed teleports scheduled during unloading. Must be done before
+    // the maps are deleted
+    ExecuteDelayedPlayerTeleports();
 
     while (!i_maps.empty())
     {
@@ -614,17 +621,17 @@ BattleGroundMap* MapManager::CreateBattleGroundMap(uint32 id, uint32 InstanceId,
 
 bool IsNorthTo(float x, float y, float const* limits, int count /* last case is limits[2*count - 1] */)
 {
-    int insideCount = 0;
+    bool isNorth = false;
     for (int i = 0; i < count - 1; ++i)
     {
         if ((limits[2*i + 1] < y && y < limits[2*i + 3]) || (limits[2*i + 1] > y && y > limits[2*i + 3]))
         {
             float threshold = limits[2*i] + (limits[2*i + 2] - limits[2*i]) * (y - limits[2*i + 1]) / (limits[2*i + 3] - limits[2*i + 1]);
             if (x > threshold)
-                ++insideCount;
+                isNorth = !isNorth;
         }
     }
-    return insideCount % 2 == 1;
+    return isNorth;
 }
 
 uint32 MapManager::GetContinentInstanceId(uint32 mapId, float x, float y, bool* transitionArea)
@@ -768,8 +775,8 @@ uint32 MapManager::GetContinentInstanceId(uint32 mapId, float x, float y, bool* 
                     1184.00f, -3915.00f,
                      737.00f, -3782.00f,
                      -75.00f, -3742.00f,
-                    -263.00f, -3836.00f,
-                    -173.00f, -4064.00f,
+                    -288.30f, -3863.80f, // Northwest path for shaman quest "Call of Fire"
+                    -282.30f, -4050.90f,
                      -81.00f, -4091.00f,
                      -49.00f, -4089.00f,
                      -16.00f, -4187.00f,
@@ -800,26 +807,143 @@ uint32 MapManager::GetContinentInstanceId(uint32 mapId, float x, float y, bool* 
                     -3472.819580f,   182.522476f, // Feralas
                     -4365.006836f, -1602.575439f, // the Barrens
                     -4515.219727f, -1681.356079f,
-                    -4543.093750f, -1882.869385f, // Thousand Needles
-                        -4824.16f,     -2310.11f,
-                    -5102.913574f, -2647.062744f,
+                    -4703.36035f , -2166.91016f, // Thousand Needles
+                    -4849.61377f  , -2176.16284f,  // Razorfen Downs outsides
+                    -4863.11377f , -2185.06274f,
+                    -5043.4502f  , -2431.94971f,
                     -5248.286621f, -3034.536377f,
                     -5246.920898f, -3339.139893f,
                     -5459.449707f, -4920.155273f, // Tanaris
                         -5437.00f,     -5863.00f
             };
+
+            const static float orgrimmarSouthLimit[] = {
+                    2132.5076f, -3912.2478f,
+                    1944.4298f, -3855.2583f,
+                    1735.6906f, -3834.2417f,
+                    1654.3671f, -3380.9902f,
+                    1593.9861f, -3975.5413f,
+                    1439.2548f, -4249.6923f,
+                    1436.3106f, -4007.8950f,
+                    1393.3199f, -4196.0625f,
+                    1445.2428f, -4373.9052f,
+                    1407.2349f, -4429.4145f,
+                    1464.7142f, -4545.2875f,
+                    1584.1331f, -4596.8764f,
+                    1716.8065f, -4601.1323f,
+                    1875.8312f, -4788.7187f,
+                    1979.7647f, -4883.4585f,
+                    2219.1562f, -4854.3330f
+            };
+
+            const static float feralasThousandNeedlesSouthLimit[] = {
+                    -6495.4995f, -4711.981f,
+                    -6674.9995f, -4515.0019f,
+                    -6769.5717f, -4122.4272f,
+                    -6838.2651f, -3874.2792f,
+                    -6851.1314f, -3659.1179f,
+                    -6624.6845f, -3063.3843f,
+                    -6416.9067f, -2570.1301f,
+                    -5959.8466f, -2287.2634f,
+                    -5947.9135f, -1866.5028f,
+                    -5947.9135f,  -820.4881f,
+                    -5876.7114f,    -3.5138f,
+                    -5876.7114f,   917.6407f,
+                    -6099.3603f,  1153.2884f,
+                    -6021.8989f,  1638.1809f,
+                    -6091.6176f,  2335.8892f,
+                    -6744.9946f,  2393.4855f,
+                    -6973.8608f,  3077.0281f,
+                    -7068.7241f,  4376.2304f,
+                    -7142.1211f,  4808.4331f
+            };
+
             if (IsNorthTo(x, y, northMiddleLimit, sizeof(northMiddleLimit) / (2 * sizeof(float))))
                 return MAP1_NORTH;
+            if (IsNorthTo(x, y, orgrimmarSouthLimit, sizeof(orgrimmarSouthLimit) / (2 * sizeof(float))))
+                return MAP1_ORGRIMMAR;
             if (IsNorthTo(x, y, durotarSouthLimit, sizeof(durotarSouthLimit) / (2 * sizeof(float))))
                 return MAP1_DUROTAR;
             if (IsNorthTo(x, y, valleyoftrialsSouthLimit, sizeof(valleyoftrialsSouthLimit) / (2 * sizeof(float))))
                 return MAP1_VALLEY;
             if (IsNorthTo(x, y, middleToSouthLimit, sizeof(middleToSouthLimit) / (2 * sizeof(float))))
-                return MAP1_MIDDLE_EST;
+                return MAP1_UPPER_MIDDLE;
+            if (IsNorthTo(x, y, feralasThousandNeedlesSouthLimit, sizeof(feralasThousandNeedlesSouthLimit) / (2 * sizeof(float))))
+                return MAP1_LOWER_MIDDLE;
             return MAP1_SOUTH;
         }
     }
     return 0;
+}
+
+void MapManager::ScheduleFarTeleport(Player *player, ScheduledTeleportData *data)
+{
+    // If we're not in the middle of an async update, it's safe to execute the
+    // teleport immediately.
+    if (!asyncMapUpdating)
+    {
+        player->ExecuteTeleportFar(data);
+        delete data;
+    }
+    else
+    {
+        ACE_Guard<ACE_Thread_Mutex> guard(m_scheduledFarTeleportsLock);
+        player->SetPendingFarTeleport(true);
+        m_scheduledFarTeleports[player] = data;
+    }
+}
+
+// Execute all delayed teleports at the end of a map update
+void MapManager::ExecuteDelayedPlayerTeleports()
+{
+    ScheduledTeleportMap::iterator iter;
+    for (iter = m_scheduledFarTeleports.begin(); iter != m_scheduledFarTeleports.end(); ++iter)
+    {
+        ExecuteSingleDelayedTeleport(iter);
+    }
+
+    m_scheduledFarTeleports.clear();
+}
+
+// Execute a single delayed teleport for the given player (if there are any). It should
+// only be necessary to call this in teleports performed outside of an update (i.e.
+// player logout and login).
+void MapManager::ExecuteSingleDelayedTeleport(Player *player)
+{
+    ACE_Guard<ACE_Thread_Mutex> guard(m_scheduledFarTeleportsLock);
+    ScheduledTeleportMap::iterator iter = m_scheduledFarTeleports.find(player);
+
+    if (iter != m_scheduledFarTeleports.end())
+    {
+        ExecuteSingleDelayedTeleport(iter);
+
+        m_scheduledFarTeleports.erase(iter);
+    }
+}
+
+void MapManager::ExecuteSingleDelayedTeleport(ScheduledTeleportMap::iterator iter)
+{
+    // Execute the teleport. If it fails, clear the semaphore
+    if (!iter->first->ExecuteTeleportFar(iter->second))
+        iter->first->SetSemaphoreTeleportFar(false);
+
+    iter->first->SetPendingFarTeleport(false);
+
+    delete iter->second; // don't leak tele data
+}
+
+void MapManager::CancelDelayedPlayerTeleport(Player *player)
+{
+    ACE_Guard<ACE_Thread_Mutex> guard(m_scheduledFarTeleportsLock);
+    ScheduledTeleportMap::iterator iter = m_scheduledFarTeleports.find(player);
+
+    if (iter != m_scheduledFarTeleports.end())
+    {
+        iter->first->SetPendingFarTeleport(false);
+        delete iter->second;
+
+        m_scheduledFarTeleports.erase(iter);
+    }
 }
 
 void MapManager::ScheduleInstanceSwitch(Player* player, uint16 newInstance)
@@ -828,6 +952,7 @@ void MapManager::ScheduleInstanceSwitch(Player* player, uint16 newInstance)
     ASSERT(mapId < LAST_CONTINENT_ID);
     m_scheduledInstanceSwitches_lock[mapId].acquire();
     m_scheduledInstanceSwitches[mapId][player] = newInstance;
+    player->SetPendingInstanceSwitch(true);
     m_scheduledInstanceSwitches_lock[mapId].release();
 }
 
@@ -841,6 +966,7 @@ void MapManager::SwitchPlayersInstances()
             Player* player = it->first;
             if (player->IsInWorld() && player->GetMapId() == continent)
                 player->SwitchInstance(it->second);
+            player->SetPendingInstanceSwitch(false);
         }
         m_scheduledInstanceSwitches[continent].clear();
     }

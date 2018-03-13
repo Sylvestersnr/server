@@ -264,6 +264,7 @@ class Spell
         void EffectTeleUnitsFaceCaster(SpellEffectIndex eff_idx);
         void EffectLearnSkill(SpellEffectIndex eff_idx);
         void EffectAddHonor(SpellEffectIndex eff_idx);
+        void EffectSpawn(SpellEffectIndex eff_idx);
         void EffectTradeSkill(SpellEffectIndex eff_idx);
         void EffectEnchantItemPerm(SpellEffectIndex eff_idx);
         void EffectEnchantItemTmp(SpellEffectIndex eff_idx);
@@ -381,7 +382,7 @@ class Spell
         template<typename T> WorldObject* FindCorpseUsing();
 
         bool CheckTarget( Unit* target, SpellEffectIndex eff );
-        bool CanAutoCast(Unit* target);
+        bool CanAutoCast(Unit* target, bool isPositive);
 
         static void MANGOS_DLL_SPEC SendCastResult(Player* caster, SpellEntry const* spellInfo, SpellCastResult result);
         void SendCastResult(SpellCastResult result);
@@ -530,6 +531,7 @@ class Spell
         // Channeled spells system
         typedef std::list<SpellAuraHolder *> SpellAuraHolderList;
         SpellAuraHolderList m_channeledHolders;             // aura holders of spell on targets for channeled spells. process in sync with spell
+        SpellAuraHolderList::iterator m_channeledUpdateIterator; // maintain an iterator to the current update element so we can handle removal of multiple auras
 
         // These vars are used in both delayed spell system and modified immediate spell system
         bool m_referencedFromCurrentSpell;                  // mark as references to prevent deleted and access by dead pointers

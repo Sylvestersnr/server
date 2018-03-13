@@ -59,7 +59,7 @@ void npc_reginald_windsorAI::ResetCreature()
 void npc_reginald_windsorAI::JustDied(Unit* /*pKiller*/)
 {
     PokeRowe();
-    m_creature->ForcedDespawn(1500);
+    m_creature->DespawnOrUnsummon(1500);
 }
 
 void npc_reginald_windsorAI::PokeRowe()
@@ -80,7 +80,7 @@ void npc_reginald_windsorAI::PokeRowe()
 
 void npc_reginald_windsorAI::DoTalk(Unit* pWho, bool yell, Unit* pTarget)
 {
-    yell ? pWho->MonsterYell(NOST_TEXT(WindsorTalk[IDSpeech]), 0, pTarget) : pWho->MonsterSay(NOST_TEXT(WindsorTalk[IDSpeech]), 0, pTarget);
+    yell ? pWho->MonsterYell(WindsorTalk[IDSpeech], 0, pTarget) : pWho->MonsterSay(WindsorTalk[IDSpeech], 0, pTarget);
     IDSpeech++;
 }
 
@@ -188,6 +188,28 @@ void npc_reginald_windsorAI::UpdateAI_corpse(const uint32 uiDiff)
     }
 }
 
+uint32 GetRandomGuardText()
+{
+    switch (urand(0, 7))
+    {
+        case 0:
+            return 8167; // Light be with you, sir.
+        case 1:
+            return 8170; // You are an inspiration to us all, sir.
+        case 2:
+            return 8172; // There walks a hero.
+        case 3:
+            return 8175; // Make way!
+        case 4:
+            return 8177; // We are but dirt beneath your feet, sir.
+        case 5:
+            return 8180; // A moment I shall remember for always.
+        case 6:
+            return 8183; // ...nerves of thorium.
+    }
+    return 8184; // A living legend... 
+}
+
 void npc_reginald_windsorAI::MoveInLineOfSight(Unit* Victim)
 {
     if (Victim && Victim->isAlive())
@@ -208,7 +230,7 @@ void npc_reginald_windsorAI::MoveInLineOfSight(Unit* Victim)
                 {
                     Victim->SetFacingToObject(m_creature);
                     Victim->HandleEmote(EMOTE_ONESHOT_SALUTE);
-                    Victim->MonsterSay(NOST_TEXT(urand(40, 45)));
+                    Victim->MonsterSay(GetRandomGuardText());
                     int Var = 0;
                     while (GardesGUIDs[Var] && Var < 29)
                         Var++;
@@ -232,7 +254,7 @@ void npc_reginald_windsorAI::UpdateAI(const uint32 uiDiff)
     if (m_uiDespawnTimer < uiDiff)
     {
         PokeRowe();
-        m_creature->ForcedDespawn();
+        m_creature->DespawnOrUnsummon();
     }
     else
         m_uiDespawnTimer -= uiDiff;
@@ -316,7 +338,7 @@ void npc_reginald_windsorAI::UpdateAI(const uint32 uiDiff)
         case 0:
             m_uiDespawnTimer = 20 * MINUTE*IN_MILLISECONDS;
             m_creature->SetFacingTo(0.659f);
-            m_creature->MonsterYellToZone(NOST_TEXT(235));
+            m_creature->MonsterYellToZone(8109);
             m_creature->HandleEmote(EMOTE_ONESHOT_SHOUT);
             Timer = 5000;
             break;
@@ -339,7 +361,7 @@ void npc_reginald_windsorAI::UpdateAI(const uint32 uiDiff)
             {
                 Onyxia->SetDisplayId(11686);
                 Onyxia->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
-                Onyxia->MonsterYellToZone(NOST_TEXT(WindsorTalk[IDSpeech]));
+                Onyxia->MonsterYellToZone(WindsorTalk[IDSpeech]);
                 IDSpeech++;
             }
             if (Creature* General = m_creature->FindNearestCreature(NPC_MARCUS_JONATHAN, 150.0f))
@@ -763,11 +785,11 @@ bool GossipHello_npc_reginald_windsor(Player* pPlayer, Creature* pCreature)
     if (auto pWindsorEventAI = static_cast<npc_reginald_windsorAI*>(pCreature->AI()))
     {
         if (pPlayer == pWindsorEventAI->GetPlayer() && pWindsorEventAI->QuestAccepted)
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Me and my friends are ready. Let's stop this masquerade!", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
+            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, 8256, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
         else if (pCreature->isQuestGiver())
             pPlayer->PrepareQuestMenu(pCreature->GetGUID());
 
-        pPlayer->SEND_GOSSIP_MENU(125800, pCreature->GetGUID());
+        pPlayer->SEND_GOSSIP_MENU(5633, pCreature->GetGUID());
     }
     return true;
 }

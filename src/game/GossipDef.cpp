@@ -85,8 +85,8 @@ void GossipMenu::AddMenuItem(uint8 Icon, int32 itemText, uint32 dtSender, uint32
 {
     uint32 loc_idx = m_session->GetSessionDbLocaleIndex();
 
-    char const* item_text = itemText ? sObjectMgr.GetMangosString(itemText, loc_idx) : "";
-    char const* box_text = boxText ? sObjectMgr.GetMangosString(boxText, loc_idx) : "";
+    char const* item_text = itemText ? (itemText > 0 ? sObjectMgr.GetBroadcastText(itemText, loc_idx, GetMenuSession()->GetPlayer()->getGender()) : sObjectMgr.GetMangosString(itemText, loc_idx)) : "";
+    char const* box_text = boxText ? (boxText > 0 ? sObjectMgr.GetBroadcastText(boxText, loc_idx, GetMenuSession()->GetPlayer()->getGender()) : sObjectMgr.GetMangosString(boxText, loc_idx)) : "";
 
     AddMenuItem(Icon, std::string(item_text), dtSender, dtAction, std::string(box_text), Coded);
 }
@@ -158,7 +158,7 @@ void PlayerMenu::SendGossipMenu(uint32 TitleTextId, ObjectGuid objectGuid)
     WorldPacket data(SMSG_GOSSIP_MESSAGE, (100));           // guess size
     data << ObjectGuid(objectGuid);
     data << uint32(TitleTextId);
-    data << uint32(mGossipMenu.MenuItemCount());            // max count 0x20
+    data << uint32(mGossipMenu.MenuItemCount());            // [ZERO] max count 15
 
     for (uint32 iI = 0; iI < mGossipMenu.MenuItemCount(); ++iI)
     {
@@ -248,7 +248,7 @@ void PlayerMenu::SendPointOfInterest(uint32 poi_id)
 
 void PlayerMenu::SendTalking(uint32 textID)
 {
-    GossipText const* pGossip = sObjectMgr.GetGossipText(textID);
+    NpcText const* pGossip = sObjectMgr.GetNpcText(textID);
 
     WorldPacket data(SMSG_NPC_TEXT_UPDATE, 100);            // guess size
     data << textID;                                         // can be < 0
@@ -272,45 +272,48 @@ void PlayerMenu::SendTalking(uint32 textID)
     else
     {
         std::string Text_0[8], Text_1[8];
-        for (int i = 0; i < 8; ++i)
-        {
-            Text_0[i] = pGossip->Options[i].Text_0;
-            Text_1[i] = pGossip->Options[i].Text_1;
-        }
         int loc_idx = GetMenuSession()->GetSessionDbLocaleIndex();
-        if (loc_idx >= 0)
-        {
-            if (NpcTextLocale const *nl = sObjectMgr.GetNpcTextLocale(textID))
-            {
-                for (int i = 0; i < 8; ++i)
-                {
-                    if (nl->Text_0[i].size() > (size_t)loc_idx && !nl->Text_0[i][loc_idx].empty())
-                        Text_0[i] = nl->Text_0[i][loc_idx];
-                    if (nl->Text_1[i].size() > (size_t)loc_idx && !nl->Text_1[i][loc_idx].empty())
-                        Text_1[i] = nl->Text_1[i][loc_idx];
-                }
-            }
-        }
         for (int i = 0; i < 8; ++i)
         {
-            data << pGossip->Options[i].Probability;
-
-            if (Text_0[i].empty())
-                data << Text_1[i];
-            else
-                data << Text_0[i];
-
-            if (Text_1[i].empty())
-                data << Text_0[i];
-            else
-                data << Text_1[i];
-
-            data << pGossip->Options[i].Language;
-
-            for (int j = 0; j < 3; ++j)
+            BroadcastText const* bct = sObjectMgr.GetBroadcastTextLocale(pGossip->Options[i].BroadcastTextID);
+            if (bct)
             {
-                data << pGossip->Options[i].Emotes[j]._Delay;
-                data << pGossip->Options[i].Emotes[j]._Emote;
+                Text_0[i] = bct->GetText(loc_idx, GENDER_MALE, true);
+                Text_1[i] = bct->GetText(loc_idx, GENDER_FEMALE, true);
+
+                data << pGossip->Options[i].Probability;
+
+                if (Text_0[i].empty())
+                    data << Text_1[i];
+                else
+                    data << Text_0[i];
+
+                if (Text_1[i].empty())
+                    data << Text_0[i];
+                else
+                    data << Text_1[i];
+
+                data << bct->Language;
+
+                data << bct->EmoteDelay0;
+                data << bct->EmoteId0;
+                data << bct->EmoteDelay1;
+                data << bct->EmoteId1;
+                data << bct->EmoteDelay2;
+                data << bct->EmoteId2;
+            }
+            else
+            {
+                data << float(0);
+                data << "Greetings $N";
+                data << "Greetings $N";
+                data << uint32(0);
+                data << uint32(0);
+                data << uint32(0);
+                data << uint32(0);
+                data << uint32(0);
+                data << uint32(0);
+                data << uint32(0);
             }
         }
     }
@@ -811,7 +814,7 @@ void PlayerMenu::SendQuestGiverRequestItems(Quest const *pQuest, ObjectGuid npcG
 
     data << uint32(0x04);                                   // flags2
     data << uint32(0x08);                                   // flags3
-    data << uint32(0x10);                                   // flags4
+    //data << uint32(0x10);                                 // [-ZERO] flags4
 
     GetMenuSession()->SendPacket(&data);
     DEBUG_LOG("WORLD: Sent SMSG_QUESTGIVER_REQUEST_ITEMS NPCGuid = %s, questid = %u", npcGUID.GetString().c_str(), pQuest->GetQuestId());

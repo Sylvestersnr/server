@@ -40,6 +40,8 @@
 #define DEFAULT_VISIBILITY_DISTANCE 90.0f       // default visible distance, 90 yards on continents
 #define DEFAULT_VISIBILITY_INSTANCE 120.0f      // default visible distance in instances, 120 yards
 #define DEFAULT_VISIBILITY_BG       180.0f      // default visible distance in BG, 180 yards
+#define DEFAULT_VISIBILITY_MODIFIER 0.0f        // default visibility modifier on some units that should be seen beyond normal visibility distances
+#define DEFAULT_CREATURE_SUMMON_LIMIT  100      // default maximum number of creatures an object can have summoned at once
 
 #define DEFAULT_WORLD_OBJECT_SIZE   0.388999998569489f      // currently used (correctly?) for any non Unit world objects. This is actually the bounding_radius, like player/creature from creature_model_data
 #define DEFAULT_OBJECT_SCALE        1.0f                    // player/item scale as default, npc/go from database, pets from dbc
@@ -140,6 +142,7 @@ enum ObjectSpawnFlags
     SPAWN_FLAG_DYNAMIC_RESPAWN_TIME = 0x08,
     SPAWN_FLAG_FORCE_DYNAMIC_ELITE  = 0x10, // creature only
     SPAWN_FLAG_EVADE_OUT_HOME_AREA  = 0x20, // creature only
+    SPAWN_FLAG_NOT_VISIBLE          = 0x40, // creature only
 };
 
 // [-ZERO] Need check and update
@@ -335,12 +338,6 @@ class MANGOS_DLL_SPEC Object
         void SetObjectScale(float newScale);
 
         uint8 GetTypeId() const { return m_objectTypeId; }
-        // Fonctions nostalrius :
-        bool IsCreature() const { return m_objectTypeId == TYPEID_UNIT;   }
-        bool IsPlayer()   const { return m_objectTypeId == TYPEID_PLAYER; }
-        bool IsGameObject()   const { return m_objectTypeId == TYPEID_GAMEOBJECT; }
-        bool IsPet()      const;
-
         bool isType(TypeMask mask) const { return (mask & m_objectType); }
 
         virtual void BuildCreateUpdateBlockForPlayer( UpdateData *data, Player *target ) const;
@@ -556,40 +553,34 @@ class MANGOS_DLL_SPEC Object
         bool IsDeleted() const { return _deleted; }
 
         // Convertions
-        Unit* ToUnit()
-        {
-            if (GetTypeId() == TYPEID_UNIT || GetTypeId() == TYPEID_PLAYER)
-                return (Unit*)this;
-            return nullptr;
-        }
+        inline bool IsWorldObject() const { return isType(TYPEMASK_WORLDOBJECT); }
+        WorldObject* ToWorldObject() { if (IsWorldObject()) return reinterpret_cast<WorldObject*>(this); else return nullptr; }
+        WorldObject const* ToWorldObject() const { if (IsWorldObject()) return reinterpret_cast<WorldObject const*>(this); else return nullptr; }
 
-        Unit const* ToUnit() const
-        {
-            if (GetTypeId() == TYPEID_UNIT || GetTypeId() == TYPEID_PLAYER)
-                return (Unit const*)this;
-            return nullptr;
-        }
-        #define DO_CONVERT(fnctn, type, typeid) \
-        inline type* fnctn()\
-        {\
-            if (GetTypeId() == typeid)\
-                return (type*)this;\
-            return NULL;\
-        } \
-        inline type const* fnctn() const\
-        {\
-            if (GetTypeId() == typeid)\
-                return (type const*)this;\
-            return NULL;\
-        }
+        inline bool IsPlayer() const { return GetTypeId() == TYPEID_PLAYER; }
+        Player* ToPlayer() { if (IsPlayer()) return reinterpret_cast<Player*>(this); else return nullptr; }
+        Player const* ToPlayer() const { if (IsPlayer()) return reinterpret_cast<Player const*>(this); else return nullptr; }
 
-        DO_CONVERT(ToGameObject, GameObject, TYPEID_GAMEOBJECT)
-        DO_CONVERT(ToCreature, Creature, TYPEID_UNIT)
-        DO_CONVERT(ToPlayer, Player, TYPEID_PLAYER)
-        DO_CONVERT(ToCorpse, Corpse, TYPEID_CORPSE)
+        inline bool IsCreature() const { return GetTypeId() == TYPEID_UNIT; }
+        Creature* ToCreature() { if (IsCreature()) return reinterpret_cast<Creature*>(this); else return nullptr; }
+        Creature const* ToCreature() const { if (IsCreature()) return reinterpret_cast<Creature const*>(this); else return nullptr; }
 
+        inline bool IsUnit() const { return isType(TYPEMASK_UNIT); }
+        Unit* ToUnit() { if (IsUnit()) return reinterpret_cast<Unit*>(this); else return nullptr; }
+        Unit const* ToUnit() const { if (IsUnit()) return reinterpret_cast<Unit const*>(this); else return nullptr; }
+
+        inline bool IsGameObject() const { return GetTypeId() == TYPEID_GAMEOBJECT; }
+        GameObject* ToGameObject() { if (IsGameObject()) return reinterpret_cast<GameObject*>(this); else return nullptr; }
+        GameObject const* ToGameObject() const { if (IsGameObject()) return reinterpret_cast<GameObject const*>(this); else return nullptr; }
+
+        inline bool IsCorpse() const { return GetTypeId() == TYPEID_CORPSE; }
+        Corpse* ToCorpse() { if (IsCorpse()) return reinterpret_cast<Corpse*>(this); else return nullptr; }
+        Corpse const* ToCorpse() const { if (IsCorpse()) return reinterpret_cast<Corpse const*>(this); else return nullptr; }
+
+        bool IsPet()      const;
         Pet const* ToPet() const;
         Pet* ToPet();
+
         virtual bool HasQuest(uint32 /* quest_id */) const { return false; }
         virtual bool HasInvolvedQuest(uint32 /* quest_id */) const { return false; }
     protected:
@@ -730,6 +721,7 @@ m_obj->m_updateTracker.Reset();
         void SetName(const std::string& newname) { m_name=newname; }
 
         virtual const char* GetNameForLocaleIdx(int32 /*locale_idx*/) const { return GetName(); }
+        virtual uint8 getGender() const { return 0; } // used in chat builder
 
         float GetExactDistance( const WorldObject* obj ) const;
         float GetExactDistance(float x, float y, float z) const;
@@ -739,10 +731,7 @@ m_obj->m_updateTracker.Reset();
         float GetDistance2d(float x, float y) const;
         float GetDistanceZ(const WorldObject* obj) const;
         float GetDistanceSqr(float x, float y, float z) const;
-        bool IsInMap(const WorldObject* obj) const
-        {
-            return IsInWorld() && obj->IsInWorld() && (GetMap() == obj->GetMap());
-        }
+        bool IsInMap(const WorldObject* obj) const;
         bool IsWithinDist3d(float x, float y, float z, float dist2compare) const;
         bool IsWithinDist2d(float x, float y, float dist2compare) const;
         bool _IsWithinDist(WorldObject const* obj, float dist2compare, bool is3D) const;
@@ -816,6 +805,10 @@ m_obj->m_updateTracker.Reset();
         void SendMessageToSetExcept(WorldPacket *data, Player const* skipped_receiver);
         void DirectSendPublicValueUpdate(uint32 index);
 
+        void PlayDistanceSound(uint32 sound_id, Player* target = nullptr);
+        void PlayDirectSound(uint32 sound_id, Player* target = nullptr);
+        void PlayDirectMusic(uint32 music_id, Player* target = nullptr);
+
         void PMonsterSay(const char* text, ...);
         void PMonsterSay(int32 text, ...) const;
         void PMonsterYell(const char* text, ...);
@@ -831,14 +824,9 @@ m_obj->m_updateTracker.Reset();
         void MonsterWhisper(int32 textId, Unit* receiver, bool IsBossWhisper = false) const;
         void MonsterYellToZone(int32 textId, uint32 language = 0, Unit* target = nullptr) const;
         void MonsterScriptToZone(int32 textId, ChatMsg type, uint32 language = 0, Unit* target = nullptr) const;
-        static void BuildMonsterChat(WorldPacket *data, ObjectGuid senderGuid, uint8 msgtype, char const* text, uint32 language, char const* name, ObjectGuid targetGuid);
-
-        void PlayDistanceSound(uint32 sound_id, Player* target = nullptr);
-        void PlayDirectSound(uint32 sound_id, Player* target = nullptr);
-        void PlayDirectMusic(uint32 music_id, Player* target = nullptr);
+        static void BuildWorldObjectChat(WorldPacket *data, ObjectGuid senderGuid, uint8 msgtype, char const* text, uint32 language, char const* name, ObjectGuid targetGuid);
 
         void SendObjectDeSpawnAnim(ObjectGuid guid);
-        void SendGameObjectCustomAnim(ObjectGuid guid, uint32 animId = 0);
 
         virtual bool IsHostileTo(Unit const* unit) const =0;
         virtual bool IsFriendlyTo(Unit const* unit) const =0;
@@ -860,7 +848,7 @@ m_obj->m_updateTracker.Reset();
         virtual bool isVisibleForInState(Player const* u, WorldObject const* viewPoint, bool inVisibleList) const = 0;
 
         void SetMap(Map * map);
-        Map * GetMap() const { MANGOS_ASSERT(m_currMap); return m_currMap; }
+        Map * GetMap() const;
         Map * FindMap() const { return m_currMap; }
 
         //used to check all object's GetMap() calls when object is not in world!
@@ -876,12 +864,12 @@ m_obj->m_updateTracker.Reset();
         void RemoveFromClientUpdateList() override;
         void BuildUpdateData(UpdateDataMapType &) override;
 
-        Creature* SummonCreature(uint32 id, float x, float y, float z, float ang,TempSummonType spwtype = TEMPSUMMON_DEAD_DESPAWN,uint32 despwtime = 25000, bool asActiveObject = false);
+        Creature* SummonCreature(uint32 id, float x, float y, float z, float ang,TempSummonType spwtype = TEMPSUMMON_DEAD_DESPAWN,uint32 despwtime = 25000, bool asActiveObject = false, uint32 pacifiedTimer = 0);
         GameObject* SummonGameObject(uint32 entry, float x, float y, float z, float ang, float rotation0 = 0.0f, float rotation1 = 0.0f, float rotation2 = 0.0f, float rotation3 = 0.0f, uint32 respawnTime = 25000, bool attach = true);
 
         // Recherche par entry
-        Creature* FindNearestCreature(uint32 entry, float range, bool alive = true);
-        GameObject* FindNearestGameObject(uint32 entry, float range);
+        Creature* FindNearestCreature(uint32 entry, float range, bool alive = true) const;
+        GameObject* FindNearestGameObject(uint32 entry, float range) const;
         void GetGameObjectListWithEntryInGrid(std::list<GameObject*>& lList, uint32 uiEntry, float fMaxSearchRange);
         void GetCreatureListWithEntryInGrid(std::list<Creature*>& lList, uint32 uiEntry, float fMaxSearchRange);
 
@@ -917,12 +905,25 @@ m_obj->m_updateTracker.Reset();
         // if player should be eligible for loot and XP from this object.
         void SetLootAndXPModDist(float val);
 
+        float GetVisibilityModifier() const;
+        void SetVisibilityModifier(float f);
+
+        uint32 GetCreatureSummonCount() { return m_creatureSummonCount; }
+        void DecrementSummonCounter();
+
+        uint32 GetCreatureSummonLimit() const { return m_creatureSummonLimit; }
+        void SetCreatureSummonLimit(uint32 limit);
+
     protected:
         explicit WorldObject();
 
         std::string m_name;
         ZoneScript* m_zoneScript;
         bool m_isActiveObject;
+        // Extra visibility distance for this unit, only used if it is an active object.
+        // c.f. GetVisibilityModifier(). Be very conservative using this - a large
+        // draw distance can be expensive for updates with lots of players
+        float m_visibilityModifier;
 
         Map * m_currMap;                                    //current object's Map location
 
@@ -936,6 +937,36 @@ m_obj->m_updateTracker.Reset();
         WorldUpdateCounter m_updateTracker;
         
         float m_lootAndXPRangeModifier;
+
+        uint32 m_creatureSummonCount;   // Current summon count
+        uint32 m_creatureSummonLimit;   // Hard limit on creature summons
+        uint32 m_summonLimitAlert;      // Timer to alert GMs if a creature is at the summon limit
 };
+
+// Helper functions to cast between different Object pointers. Useful when unsure that your object* is valid at all.
+inline WorldObject* ToWorldObject(Object* object)
+{
+    return object && object->isType(TYPEMASK_WORLDOBJECT) ? static_cast<WorldObject*>(object) : nullptr;
+}
+
+inline GameObject* ToGameObject(Object* object)
+{
+    return object && object->GetTypeId() == TYPEID_GAMEOBJECT ? reinterpret_cast<GameObject*>(object) : nullptr;
+}
+
+inline Unit* ToUnit(Object* object)
+{
+    return object && object->isType(TYPEMASK_UNIT) ? reinterpret_cast<Unit*>(object) : nullptr;
+}
+
+inline Creature* ToCreature(Object* object)
+{
+    return object && object->GetTypeId() == TYPEID_UNIT ? reinterpret_cast<Creature*>(object) : nullptr;
+}
+
+inline Player* ToPlayer(Object* object)
+{
+    return object && object->GetTypeId() == TYPEID_PLAYER ? reinterpret_cast<Player*>(object) : nullptr;
+}
 
 #endif

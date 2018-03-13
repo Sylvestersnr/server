@@ -150,7 +150,7 @@ public:
             Unit* target = targetSelectFunc(m_creature);
             bool didCast = false;
             if (target) {
-                if(m_creature->AI()->DoCastSpellIfCan(target, spellID, triggered ? CAST_TRIGGERED : 0) == CAST_OK) {
+                if(m_creature->AI()->DoCastSpellIfCan(target, spellID, triggered ? CF_TRIGGERED : 0) == CAST_OK) {
                     didCast = true;
                 }
             }
@@ -183,7 +183,6 @@ protected:
     uint32 cooldown;
     std::function<uint32()> resetCD;
     bool triggered;
-    bool onlyOnce;
     bool retryOnFail;
     uint32 timeSinceLast;
     SpellTarSelectFunction targetSelectFunc;
@@ -566,7 +565,7 @@ public:
             if (birthTimer > diff) {
                 // Only want to cast it once, and it cant be done in ctor because groundRupture interrupts the animation.
                 if (birthTimer == TENTACLE_BIRTH_DURATION) {
-                    DoCastSpellIfCan(m_creature, SPELL_TENTACLE_BIRTH, CAST_FORCE_TARGET_SELF);
+                    DoCastSpellIfCan(m_creature, SPELL_TENTACLE_BIRTH, CF_TARGET_CASTS_ON_SELF);
                 }
                 birthTimer -= diff;
             }
@@ -1271,7 +1270,6 @@ struct cthunAI : public ScriptedAI
         wipeRespawnEyeTimer(0)
     {
         SetCombatMovement(false);
-        m_creature->SetLootAndXPModDist(800.0f); // Players in stomach should get rep too, poor bastards
 
         m_pInstance = (instance_temple_of_ahnqiraj*)pCreature->GetInstanceData();
         if (!m_pInstance)
@@ -1687,7 +1685,7 @@ struct cthunAI : public ScriptedAI
         }
         //Spawn 2 flesh tentacles in C'thun stomach
         for (uint32 i = 0; i < 2; i++) {
-            Creature* pSpawned = m_creature->SummonCreature(MOB_FLESH_TENTACLE,
+            m_creature->SummonCreature(MOB_FLESH_TENTACLE,
                 fleshTentaclePositions[i][0],
                 fleshTentaclePositions[i][1],
                 fleshTentaclePositions[i][2],

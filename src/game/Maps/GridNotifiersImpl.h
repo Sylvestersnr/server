@@ -130,7 +130,7 @@ inline void MaNGOS::DynamicObjectUpdater::VisitHelper(Unit* target)
     if (!target->isAlive() || target->IsTaxiFlying() )
         return;
 
-    if (target->GetTypeId() == TYPEID_UNIT && ((Creature*)target)->IsTotem())
+    if (target->GetTypeId() == TYPEID_UNIT && ((Creature*)target)->IsImmuneToAoe())
         return;
 
     if (!i_dynobject.IsWithinDistInMap(target, i_dynobject.GetRadius()))
@@ -153,6 +153,11 @@ inline void MaNGOS::DynamicObjectUpdater::VisitHelper(Unit* target)
     if (i_positive && !i_check->IsFriendlyTo(target))
         return;
 
+    // Must check LoS with the target to prevent casting through objects by targeting
+    // the floor. Let creatures cheat
+    if (i_dynobject.GetCasterGuid().IsPlayer() && !i_dynobject.IsWithinLOSInMap(target))
+        return;
+
     if (!i_dynobject.NeedsRefresh(target))
         return;
 
@@ -172,8 +177,7 @@ inline void MaNGOS::DynamicObjectUpdater::VisitHelper(Unit* target)
             pAi->AttackedBy(i_check);
         i_check->SetInCombatWith(target);
         target->SetInCombatWith(i_check);
-        if (Player *attackedPlayer = target->GetCharmerOrOwnerPlayerOrPlayerItself())
-            i_check->SetContestedPvP(attackedPlayer);
+        i_check->SetContestedPvP(target);
     }
     // Check target immune to spell or aura
     if (target->IsImmuneToSpell(spellInfo, false) || target->IsImmuneToSpellEffect(spellInfo, eff_index, false))

@@ -213,7 +213,10 @@ void WorldSession::HandleMoveWorldportAckOpcode()
     // ignores any movement from the transport object. Triggering
     // `SMSG_STANDSTATE_UPDATE' with its current state resets the camera
     // (implemented in `WorldSession::HandleZoneUpdateOpcode').
-    GetPlayer()->SendHeartBeat(true);
+    if (_clientOS == CLIENT_OS_MAC && GetPlayer()->m_movementInfo.HasMovementFlag(MOVEFLAG_ONTRANSPORT))
+    {
+        GetPlayer()->SendHeartBeat(true);
+    }
 }
 
 void WorldSession::HandleMoveTeleportAckOpcode(WorldPacket& recv_data)
@@ -263,6 +266,7 @@ void WorldSession::HandleMovementOpcodes(WorldPacket & recv_data)
     DEBUG_LOG("WORLD: Recvd %s (%u, 0x%X) opcode", LookupOpcodeName(opcode), opcode, opcode);
 
     Unit *mover = _player->GetMover();
+
     if (mover->GetObjectGuid() != _clientMoverGuid)
         return;
         
@@ -424,7 +428,7 @@ void WorldSession::HandleSetActiveMoverOpcode(WorldPacket &recv_data)
     ObjectGuid guid;
     recv_data >> guid;
 
-    if (_player->GetMover()->GetObjectGuid() != guid)
+    if (_player->GetMover() && _player->GetMover()->GetObjectGuid() != guid)
     {
         sLog.outError("HandleSetActiveMoverOpcode: incorrect mover guid: mover is %s and should be %s",
                       _player->GetMover()->GetGuidStr().c_str(), guid.GetString().c_str());
@@ -433,7 +437,9 @@ void WorldSession::HandleSetActiveMoverOpcode(WorldPacket &recv_data)
     }
 
     // mover swap after Eyes of the Beast, PetAI::UpdateAI handle the pet's return
-    if (_player->GetPetGuid() == _clientMoverGuid)
+    // Check if we actually have a pet before looking up
+    if (_player->GetPetGuid() && _player->GetPetGuid() == _clientMoverGuid)
+    {
         if (Pet* pet = _player->GetPet())
         {
             pet->clearUnitState(UNIT_STAT_CONTROLLED);
@@ -442,6 +448,7 @@ void WorldSession::HandleSetActiveMoverOpcode(WorldPacket &recv_data)
             if (!pet->IsWithinDistInMap(_player, pet->GetMap()->GetGridActivationDistance()))
                 _player->RemovePet(PET_SAVE_REAGENTS);
         }
+    }
 
     _clientMoverGuid = guid;
 }

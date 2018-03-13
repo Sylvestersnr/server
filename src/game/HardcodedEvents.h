@@ -146,9 +146,9 @@ private:
 enum DarkmoonState
 {
     DARKMOON_NONE = 0,
-    DARKMOON_A2_INSTALLATION = 100, // TODO (spawns, game_event)
+    DARKMOON_A2_INSTALLATION = 23, // TODO (spawns, game_event)
     DARKMOON_A2 = 4,
-    DARKMOON_H2_INSTALLATION = 101, // TODO (spawns, game_event)
+    DARKMOON_H2_INSTALLATION = 24, // TODO (spawns, game_event)
     DARKMOON_H2 = 5,
 };
 
@@ -255,4 +255,117 @@ private:
 
     std::vector <Creature*> SummonedMobs;
     const WorldLocation EventPos = WorldLocation(1, -8065.42f, 1527.93f, 2.61001f);
+};
+
+struct ScourgeInvasionEvent : WorldEvent
+{
+    ScourgeInvasionEvent();
+
+    void Update() override;
+    void Enable() override;
+    void Disable() override;
+    uint32 GetNextUpdateDelay() override;
+
+private:
+    struct InvasionXYZ {
+        InvasionXYZ(float x, float y, float z)
+            : x(x), y(y), z(z) {}
+        float x, y, z;
+    };
+
+    struct InvasionNecropolis {
+        InvasionNecropolis(float x, float y, float z, float o)
+            : x(x), y(y), z(z), o(o) {}
+        float x, y, z, o;
+        std::vector<InvasionXYZ> shards;
+
+        ObjectGuid relayGuid;
+    };
+
+    struct InvasionZone
+    {
+        uint32 map;
+        uint32 zoneId;
+        uint32 remainingVar;
+        std::vector<InvasionNecropolis> points;
+    };
+
+    bool invasion1Loaded;
+    bool invasion2Loaded;
+
+    void HandleActiveZone(uint32 attackTimeVar, uint32 attackZoneVar, uint32 remainingVar, time_t now, uint32 zoneId);
+
+    bool OnEnable(uint32 attackZoneVar, uint32 attackTimeVar);
+
+    void StartNewInvasionIfTime(uint32 timeVariable, uint32 zoneVariable);
+    bool ResumeInvasion(uint32 zoneId);
+    bool SummonNecropolis(Map* pMap, InvasionNecropolis& point);
+
+    Map* GetMap(uint32 mapId, const InvasionNecropolis& invZone);
+    bool isValidZoneId(uint32 zoneId);
+    InvasionZone* GetZone(uint32 zoneId);
+    uint32 GetNewRandomZone(uint32 curr1, uint32 curr2);
+
+    void UpdateWorldState();
+
+    std::vector<InvasionZone> invasionPoints;
+    int previousRemainingCounts[6];
+};
+
+enum WarEffortEventStage
+{
+    WAR_EFFORT_STAGE_COLLECTION     = 0,
+    WAR_EFFORT_STAGE_READY          = 1,
+    WAR_EFFORT_STAGE_MOVE_1         = 2,
+    WAR_EFFORT_STAGE_MOVE_2         = 3,
+    WAR_EFFORT_STAGE_MOVE_3         = 4,
+    WAR_EFFORT_STAGE_MOVE_4         = 5,
+    WAR_EFFORT_STAGE_MOVE_5         = 6,
+    WAR_EFFORT_STAGE_GONG_WAIT      = 7,
+    WAR_EFFORT_STAGE_GONG_RUNG      = 8,
+    WAR_EFFORT_STAGE_BATTLE         = 9,
+    WAR_EFFORT_STAGE_CH_ATTACK      = 10,
+    WAR_EFFORT_STAGE_FINALBATTLE    = 11,
+    WAR_EFFORT_STAGE_COMPLETE       = 12
+};
+
+enum WarEffortEnums
+{
+    WAR_EFFORT_COLLECTION_TRANSITION_TIME   = 10 * MINUTE,  // 10 minutes between the event ending and starting the transition (what is the blizzlike thing here?)
+    WAR_EFFORT_MOVE_TRANSITION_TIME         = DAY,          // 1 day transition time default when the effort is moving to Silithus
+    WAR_EFFORT_GONG_DURATION                = 10 * HOUR,    // gong lasts 10 hours after the first dong
+    WAR_EFFORT_CH_ATTACK_TIME               = 4 * HOUR,     // 4h after gong bang, CH gets attacked
+    WAR_EFFORT_FINAL_BATTLE_TIME            = 4 * HOUR,     // 4h after CH attack, final battle begins
+    WAR_EFFORT_TEXT_CRYSTALS                = -1000008,     // Crystals emerge from the ground...
+    WAR_EFFORT_TEXT_BATTLE_OVER             = -1780312,     // The Might of Kalimdor is victorious...
+    WAR_EFFORT_ASHI_REWARD                  = 0x01,
+    WAR_EFFORT_ZORA_REWARD                  = 0x02,
+    WAR_EFFORT_REGAL_REWARD                 = 0x04
+};
+
+struct WarEffortEvent : WorldEvent
+{
+    WarEffortEvent();
+
+    WarEffortEventStage stage;
+    uint32 lastStageTransitionTime;
+    uint32 gongRingTime;
+    uint32 lastAutoCompleteTime;
+
+    void Update() override;
+    void Enable() override;
+    void Disable() override;
+    uint32 GetNextUpdateDelay() override;
+
+private:
+    void UpdateWarEffortCollection(uint32 now);
+    void UpdateStageTransitionTime();
+    void IncrementWarEffortTransition();
+    void UpdateVariables();
+    void BeginWar();
+    void CompleteWarEffort();
+    void UpdateStageEvents();
+    void EnableAndStartEvent(uint16 event_id);
+    void DisableAndStopEvent(uint16 event_id);
+    void UpdateHiveColossusEvents();
 };

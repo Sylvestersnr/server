@@ -31,9 +31,6 @@
 bool IsAcceptableClientBuild(uint32 build);
 std::string AcceptableClientBuildsListStr();
 
-typedef std::list<uint32> SimpleFactionsList;
-
-SimpleFactionsList const* GetFactionTeamList(uint32 faction);
 char const* GetPetName(uint32 petfamily, uint32 dbclang);
 uint32 GetTalentSpellCost(uint32 spellId);
 uint32 GetTalentSpellCost(TalentSpellPos const* pos);
@@ -73,6 +70,7 @@ extern DBCStorage <ChrRacesEntry>                sChrRacesStore;
 extern DBCStorage <CinematicSequencesEntry>      sCinematicSequencesStore;
 extern DBCStorage <CreatureDisplayInfoEntry>     sCreatureDisplayInfoStore;
 extern DBCStorage <CreatureDisplayInfoExtraEntry>sCreatureDisplayInfoExtraStore;
+extern DBCStorage <CreatureModelDataEntry>       sCreatureModelDataStore;
 extern DBCStorage <CreatureFamilyEntry>          sCreatureFamilyStore;
 extern DBCStorage <CreatureSpellDataEntry>       sCreatureSpellDataStore;
 extern DBCStorage <CreatureTypeEntry>            sCreatureTypeStore;
@@ -80,8 +78,6 @@ extern DBCStorage <DurabilityCostsEntry>         sDurabilityCostsStore;
 extern DBCStorage <DurabilityQualityEntry>       sDurabilityQualityStore;
 extern DBCStorage <EmotesEntry>                  sEmotesStore;
 extern DBCStorage <EmotesTextEntry>              sEmotesTextStore;
-extern DBCStorage <FactionEntry>                 sFactionStore;
-extern DBCStorage <FactionTemplateEntry>         sFactionTemplateStore;
 extern DBCStorage <GameObjectDisplayInfoEntry>   sGameObjectDisplayInfoStore;
 
 extern DBCStorage <ItemBagFamilyEntry>           sItemBagFamilyStore;
@@ -95,7 +91,6 @@ extern DBCStorage <QuestSortEntry>               sQuestSortStore;
 extern DBCStorage <SkillLineEntry>               sSkillLineStore;
 extern DBCStorage <SkillLineAbilityEntry>        sSkillLineAbilityStore;
 extern DBCStorage <SkillRaceClassInfoEntry>      sSkillRaceClassInfoStore;
-extern DBCStorage <SoundEntriesEntry>            sSoundEntriesStore;
 extern DBCStorage <SpellCastTimesEntry>          sSpellCastTimesStore;
 extern DBCStorage <SpellDurationEntry>           sSpellDurationStore;
 extern DBCStorage <SpellFocusObjectEntry>        sSpellFocusObjectStore;
@@ -105,7 +100,6 @@ extern PetFamilySpellsStore                      sPetFamilySpellsStore;
 extern DBCStorage <SpellRadiusEntry>             sSpellRadiusStore;
 extern DBCStorage <SpellRangeEntry>              sSpellRangeStore;
 extern DBCStorage <SpellShapeshiftFormEntry>     sSpellShapeshiftFormStore;
-extern DBCStorage <DBCSpellEntry>                sSpellStore;
 extern DBCStorage <StableSlotPricesEntry>        sStableSlotPricesStore;
 extern DBCStorage <TalentEntry>                  sTalentStore;
 extern DBCStorage <TalentTabEntry>               sTalentTabStore;
@@ -122,10 +116,7 @@ extern DBCStorage <WorldSafeLocsEntry>           sWorldSafeLocsStore;
 void LoadDBCStores(const std::string& dataPath);
 
 // script support functions
-MANGOS_DLL_SPEC DBCStorage <SoundEntriesEntry>          const* GetSoundEntriesStore();
-MANGOS_DLL_SPEC DBCStorage <DBCSpellEntry>              const* GetSpellStore();
 MANGOS_DLL_SPEC DBCStorage <SpellRangeEntry>            const* GetSpellRangeStore();
-MANGOS_DLL_SPEC DBCStorage <FactionEntry>               const* GetFactionStore();
 MANGOS_DLL_SPEC DBCStorage <CreatureDisplayInfoEntry>   const* GetCreatureDisplayStore();
 MANGOS_DLL_SPEC DBCStorage <EmotesEntry>                const* GetEmotesStore();
 MANGOS_DLL_SPEC DBCStorage <EmotesTextEntry>            const* GetEmotesTextStore();
